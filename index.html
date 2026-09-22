@@ -1,807 +1,145 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Correspondance de Beaumarchais — carte</title>
-<!-- Leaflet. Pour ne dépendre d'aucun serveur externe, téléchargez leaflet.css / leaflet.js
-     (leafletjs.com) et placez-les à côté de cette page en remplaçant les deux URL ci-dessous. -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<meta charset="UTF-8">
+<title>Beaumarchais — Frise chronologique</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link title="timeline-styles" rel="stylesheet" href="https://cdn.knightlab.com/libs/timeline3/latest/css/timeline.css">
+<script src="https://cdn.knightlab.com/libs/timeline3/latest/js/timeline.js"></script>
 <style>
-:root {
-  --encre: #1d2433;
-  --discret: #566070;
-  --filet: #d6dbe3;
-  --panneau: #f0f3f7;
-  --ecrit: #c62d2d;   /* lettres écrites par Beaumarchais : rouge */
-  --recu: #1f5fbf;    /* lettres reçues par Beaumarchais : bleu */
-}
-* { box-sizing: border-box; }
-[hidden] { display: none !important; }
-body { margin: 0; color: var(--encre); background: #fff;
-  font: 1rem/1.55 "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; }
-main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
-h1 { font-size: 1.8rem; line-height: 1.2; margin: 0 0 .6rem; }
-h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; }
-.intro { max-width: 68ch; color: var(--discret); margin: 0 0 1.2rem; }
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; background: #fff; }
+  #app { display: flex; flex-direction: column; height: 100%; }
+  #timeline-embed { flex: 1 1 auto; width: 100%; min-height: 0; }
 
-.filtres { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem 1.5rem;
-  background: var(--panneau); padding: 1rem 1.2rem; border-radius: 6px;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: .92rem; }
-.filtres + .filtres, .frise + .filtres { margin-top: .6rem; }
-.filtres label, .filtres .etiquette { display: block; font-weight: 600; margin-bottom: .3rem; }
-.filtres label.case { display: flex; gap: .5rem; align-items: center; font-weight: 400; }
-.filtres select { width: 100%; padding: .4rem; font: inherit; }
-.filtres button, .frise button { padding: .5rem .9rem; font: inherit; color: var(--encre); background: #fff;
-  border: 1px solid var(--encre); border-radius: 4px; cursor: pointer; }
-.filtres button[aria-pressed="true"], .frise button[aria-pressed="true"] { color: #fff; background: var(--encre); }
-.periode { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
-.periode input[type=range] { width: 100%; }
+  #goto-bar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    background: #222;
+    color: #fff;
+    font-size: 14px;
+    z-index: 20;
+  }
+  #goto-bar label { white-space: nowrap; }
+  #goto-year {
+    width: 90px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid #888;
+    font-size: 14px;
+  }
+  #goto-btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: none;
+    background: #c0392b;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  #goto-btn:hover { background: #a93226; }
+  #goto-msg { font-size: 12px; color: #ccc; }
 
-/* frise chronologique */
-.frise { margin-top: 1.2rem; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: .9rem; }
-.frise h2 { font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; margin: 0 0 .3rem; }
-.frise .aide { color: var(--discret); margin: 0 0 .6rem; }
-.frise .aide button { padding: .15rem .6rem; margin-left: .4rem; font-size: .85rem; }
-.lecture { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.2rem; margin: 0 0 .7rem; }
-.lecture label { display: flex; align-items: center; gap: .4rem; }
-.lecture select { padding: .3rem; font: inherit; }
-#etatLecture { color: var(--discret); }
-.barres, .axe { display: grid; }
-.barres { height: 96px; border-bottom: 1px solid var(--encre); cursor: ew-resize; touch-action: none; user-select: none; }
-.col { display: flex; flex-direction: column-reverse; padding: 0 1px; }
-.col.hors { opacity: .3; }
-.col .b { width: 100%; }
-.col .rouge { background: var(--ecrit); }
-.col .bleu { background: var(--recu); }
-.axe { font-size: .72rem; color: var(--discret); }
-.axe > div { display: flex; justify-content: center; }
-.axe span { flex: none; }
+  .tl-timenav .tl-timegroup:nth-of-type(1) .tl-timemarker,
+  .tl-timenav .tl-timegroup:nth-of-type(1) .tl-timemarker-content-container {
+    background-color: #c0392b !important;
+    border-color: #c0392b !important;
+  }
+  .tl-timenav .tl-timegroup:nth-of-type(1) .tl-timegroup-message {
+    color: #c0392b !important;
+  }
+  .tl-timenav .tl-timegroup:nth-of-type(2) .tl-timemarker,
+  .tl-timenav .tl-timegroup:nth-of-type(2) .tl-timemarker-content-container {
+    background-color: #e8a3c0 !important;
+    border-color: #e8a3c0 !important;
+  }
+  .tl-timenav .tl-timegroup:nth-of-type(2) .tl-timegroup-message {
+    color: #d16ba0 !important;
+  }
 
-.legende { display: flex; flex-wrap: wrap; gap: .4rem 1.5rem; margin: .9rem 0 .5rem;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: .9rem; color: var(--discret); }
-.legende span::before { content: ""; display: inline-block; width: .9em; height: .9em; border-radius: 50%;
-  margin-right: .4em; vertical-align: -.1em; background: var(--c); border: 1.5px solid var(--c); opacity: .85; }
-.legende .ecrit { --c: var(--ecrit); }
-.legende .recu { --c: var(--recu); }
-.legende .taille::before { display: none; }
-
-#carte { height: 68vh; min-height: 380px; border: 1px solid var(--filet); border-radius: 6px; }
-#etat, #noteDestinations { font: .9rem system-ui, sans-serif; color: var(--discret); margin: .6rem 0 0; }
-.fleche { background: none; border: 0; }
-
-/* vue « carte seule » (?vue=carte) : la carte occupe toute la fenêtre */
-#surcouche { display: none; position: fixed; left: 12px; bottom: 24px; z-index: 1000; padding: .6rem .9rem;
-  background: rgba(255, 255, 255, .92); border: 1px solid var(--filet); border-radius: 6px;
-  font: .95rem system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: 0 1px 4px rgba(0, 0, 0, .15); }
-#surPeriode { font-size: 1.7rem; font-weight: 600; line-height: 1.1; }
-#surDetail { color: var(--discret); margin: .15rem 0 .35rem; }
-#surcouche .legende { margin: 0; font-size: .85rem; }
-body.vue-carte { overflow: hidden; }
-body.vue-carte main { max-width: none; padding: 0; }
-body.vue-carte main > *:not(#carte) { display: none; }
-body.vue-carte #carte { position: fixed; inset: 0; height: 100vh; min-height: 0; border: 0; border-radius: 0; }
-body.vue-carte #surcouche { display: block; }
-
-.leaflet-popup-content { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: .9rem; }
-.leaflet-popup-content ul { margin: .4rem 0 0; padding: 0; list-style: none; }
-.leaflet-popup-content li { margin: .15rem 0; }
-.leaflet-popup-content button { all: unset; cursor: pointer; color: var(--recu); text-decoration: underline; }
-.leaflet-popup-content button:focus-visible { outline: 2px solid var(--recu); outline-offset: 2px; }
-
-.tableau { overflow-x: auto; border: 1px solid var(--filet); border-radius: 6px; }
-table { border-collapse: collapse; width: 100%; font: .9rem system-ui, sans-serif; }
-th, td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--filet); vertical-align: top; }
-th { background: var(--panneau); position: sticky; top: 0; }
-td.nb { white-space: nowrap; }
+  @media (max-width: 480px) {
+    #goto-bar { flex-wrap: wrap; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>Correspondance de Beaumarchais : où écrit-il, à qui, d'où ?</h1>
-  <p class="intro">Cette carte s'appuie sur les métadonnées des lettres de l'inventaire dont l'expéditeur ou le
-  destinataire est Beaumarchais et dont le lieu d'envoi est localisé ; les autres lettres ne figurent pas ici.
-  Chaque cercle est un lieu d'envoi : en rouge, celui des lettres écrites par Beaumarchais ; en bleu, celui des
-  lettres qu'il a reçues. Cliquez sur un cercle pour voir les correspondants liés à ce lieu, puis filtrez sur l'un
-  d'eux. Choisissez la période sur la frise ou avec les curseurs.</p>
-
-  <section class="filtres" aria-label="Filtres">
-    <div>
-      <span class="etiquette">Période</span>
-      <div class="periode">
-        <div><label for="anneeMin">De <output id="sortieMin"></output></label>
-          <input type="range" id="anneeMin"></div>
-        <div><label for="anneeMax">à <output id="sortieMax"></output></label>
-          <input type="range" id="anneeMax"></div>
-      </div>
-    </div>
-    <div>
-      <label for="filtrecorr">Correspondant</label>
-      <select id="filtrecorr"></select>
-    </div>
-    <div>
-      <label for="filtreSens">Sens</label>
-      <select id="filtreSens">
-        <option value="">Lettres écrites et reçues</option>
-        <option value="sortant">Écrites par Beaumarchais</option>
-        <option value="entrant">Reçues par Beaumarchais</option>
-      </select>
-    </div>
-  </section>
-
-  <section class="frise" aria-labelledby="titreFrise">
-    <h2 id="titreFrise">Frise chronologique</h2>
-    <p class="aide">Nombre de lettres par année, selon les filtres. Cliquez sur une année ou glissez sur plusieurs années
-      pour choisir la période.<button type="button" id="btnPeriodeTout">Toute la période</button></p>
-    <div class="lecture">
-      <button type="button" id="btnLecture" aria-pressed="false">Lecture</button>
-      <label>Mode
-        <select id="modeLecture">
-          <option value="annee">Année par année</option>
-          <option value="cumul">Cumulé depuis le début</option>
-        </select>
-      </label>
-      <label>Vitesse
-        <select id="vitesseLecture">
-          <option value="lente">Lente</option>
-          <option value="normale" selected>Normale</option>
-          <option value="rapide">Rapide</option>
-        </select>
-      </label>
-      <span id="etatLecture"></span>
-    </div>
-    <div id="barres" class="barres" role="group"
-         aria-label="Nombre de lettres par année. Les curseurs de période offrent la même fonction au clavier."></div>
-    <div id="axe" class="axe" aria-hidden="true"></div>
-  </section>
-
-  <section class="filtres" aria-label="Affichage">
-    <div>
-      <label for="niveauLieux">Niveau des lieux</label>
-      <select id="niveauLieux">
-        <option value="lieu">Lieux précis</option>
-        <option value="ville">Regroupés par ville</option>
-      </select>
-    </div>
-    <div>
-      <span class="etiquette">Liaisons</span>
-      <label class="case"><input type="checkbox" id="optLiens"> Tracer les trajets (lieu d'envoi → lieu de destination)</label>
-    </div>
-    <div>
-      <span class="etiquette">Parcours</span>
-      <label class="case"><input type="checkbox" id="optSuivi"> Suivre Beaumarchais (ligne noire de ses déplacements)</label>
-    </div>
-    <div>
-      <span class="etiquette">Deuxième écran</span>
-      <button type="button" id="btnOuvrirCarte"
-              title="Les réglages faits sur cette page sont répercutés en direct dans l'onglet de la carte">Ouvrir la carte dans un nouvel onglet</button>
-    </div>
-  </section>
-
-  <div class="legende">
-    <span class="ecrit">Lieux d'envoi des lettres écrites par Beaumarchais</span>
-    <span class="recu">Lieux d'envoi des lettres reçues par Beaumarchais</span>
-    <span class="taille">La surface du cercle est proportionnelle au nombre de lettres envoyées depuis ce lieu.</span>
-    <span class="taille">Trajets tracés : traits en pointillés, plus épais quand il y a plus de lettres, courbés vers la droite dans le sens du trajet.</span>
-    <span class="taille">Ligne noire (« Suivre Beaumarchais ») : ses déplacements dans l'ordre chronologique, d'après le lieu d'envoi de ses lettres ; elle suit la période choisie, mais pas les autres filtres. Survolez un trait pour voir les dates.</span>
+<div id="app">
+  <div id="goto-bar">
+    <label for="goto-year">Aller à l'année :</label>
+    <input type="number" id="goto-year" placeholder="ex. 1789" min="1722" max="1799">
+    <button id="goto-btn">Aller</button>
+    <span id="goto-msg"></span>
   </div>
-
-  <div id="carte" role="application" aria-label="Carte des lettres"></div>
-  <p id="etat" aria-live="polite"></p>
-  <p id="noteDestinations" hidden></p>
-
-  <h2>Lettres affichées</h2>
-  <div class="tableau">
-    <table>
-      <thead><tr><th>Date</th><th>IDC</th><th>Expéditeur → Destinataire</th><th>Lieu d'envoi → Lieu de destination</th></tr></thead>
-      <tbody id="lignes"></tbody>
-    </table>
-  </div>
-</main>
-
-<div id="surcouche" aria-live="polite">
-  <div id="surPeriode"></div>
-  <div id="surDetail"></div>
-  <div class="legende"><span class="ecrit">écrites par Beaumarchais</span><span class="recu">reçues</span></div>
+  <div id="timeline-embed"></div>
 </div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-/* ---------- Réglages ---------- */
-const CONFIG = {
-  donnees: "data.json",
-  // Années couvertes par la frise et les curseurs (1732 : naissance de Beaumarchais). Les lettres datées hors de
-  // cette fenêtre (par exemple 1700) ne sont pas affichées.
-  periode: [1732, 1799],
-  // Lien vers la notice d'une lettre ; {id} est remplacé par l'IDC.
-  urlNotice: "https://beaumarchais.huma-num.fr/Inventaire/Correspondance?ID={id}",
-  lignesMax: 300,           // nombre de lignes affichées dans le tableau
-  rayonMax: 40,             // rayon (px) du plus gros cercle
-  courbure: 0.25            // courbure des trajets : 0 = traits droits, 0.25 = légère courbe
-};
-
-/* ---------- Lieux de destination attribués d'office ---------- */
-// Pour les lettres ÉCRITES par Beaumarchais. Le lieu de destination est celui où le destinataire reçoit la lettre.
-// 1) Par défaut, pour tous les courriers adressés à ces correspondants (repérés par un morceau de leur nom, sans
-//    tenir compte des accents ni des majuscules) : appliqué seulement si aucun lieu de destination n'est renseigné
-//    dans l'inventaire.
-const DESTINATIONS_PAR_DEFAUT = [
-  { correspondants: ["sartine", "vergennes"], lieu: "Versailles (France)", coord: [48.8049, 2.1204] }
-];
-// 2) Lettre par lettre (IDC) : toujours appliqué.
-const DESTINATIONS_PAR_LETTRE = {
-  "1619": { lieu: "Londres (Angleterre)", coord: [51.5074, -0.1278] }   // à Morande, qui la reçoit à Londres
-};
-
-/* ---------- Outils ---------- */
-const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const pluriel = (n, un, plusieurs) => n + " " + (n > 1 ? plusieurs : un);
-
-const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
-function dateFr(d) {   // "1792-08-28" -> "28 août 1792" ; dates incomplètes : mois + année, ou année seule
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
-  if (!m) return d;
-  const mois = +m[2], jour = +m[3];
-  if (mois < 1 || mois > 12) return m[1];
-  if (!jour) return `${MOIS[mois - 1]} ${m[1]}`;
-  return `${jour === 1 ? "1er" : jour} ${MOIS[mois - 1]} ${m[1]}`;
-}
-
-const lienNotice = id => CONFIG.urlNotice
-  ? `<a href="${esc(CONFIG.urlNotice.replace("{id}", encodeURIComponent(id)))}" target="_blank" rel="noopener">${esc(id)}</a>`
-  : esc(id);
-
-const merc = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) * 180 / Math.PI;
-const inverseMerc = y => (2 * Math.atan(Math.exp(y * Math.PI / 180)) - Math.PI / 2) * 180 / Math.PI;
-
-/* ---------- État ---------- */
-let DATA = [];
-let anneeMin = 0, anneeMax = 0, maxGlobal = 1, maxLien = 1, premierAffichage = true;
-const dansFenetre = l => l.annee >= anneeMin && l.annee <= anneeMax;
-const etat = {
-  min: 0, max: 0, corr: "", sens: "", niveau: "lieu", liens: false, suivi: false
-};
-
-/* ---------- Application des lieux de destination attribués d'office ---------- */
-const sansAccent = s => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-
-function indexLieux() {   // nom de lieu -> coordonnées, d'après les données
-  const index = new Map();
-  for (const l of DATA) {
-    if (l.lieu_bm && l.coord_bm && !index.has(l.lieu_bm)) index.set(l.lieu_bm, l.coord_bm);
-    if (l.lieu_corr && l.coord_corr && !index.has(l.lieu_corr)) index.set(l.lieu_corr, l.coord_corr);
-  }
-  return index;
-}
-
-// Reprend le lieu de mêmes nom ou ville s'il existe déjà dans les données (mêmes coordonnées que les autres lettres),
-// sinon celui défini dans les réglages.
-function lieuDefini(def, index) {
-  if (index.has(def.lieu)) return [def.lieu, index.get(def.lieu)];
-  const ville = def.lieu.split(" (")[0];
-  for (const [nom, coord] of index) if (nom === ville || nom.startsWith(ville + " (")) return [nom, coord];
-  return [def.lieu, def.coord];
-}
-
-function appliquerDestinations() {
-  const index = indexLieux();
-  const bilan = { defaut: 0, parLettre: 0, correspondants: new Set() };
-  for (const l of DATA) {
-    if (l.sens !== "sortant") continue;
-    const reglageLettre = DESTINATIONS_PAR_LETTRE[l.id];
-    if (reglageLettre) {
-      [l.lieu_corr, l.coord_corr] = lieuDefini(reglageLettre, index);
-      bilan.parLettre++;
-      continue;
-    }
-    if (l.lieu_corr || l.coord_corr) continue;   // une adresse de destination a été saisie : on la respecte
-    const nom = sansAccent(l.corr);
-    const regle = DESTINATIONS_PAR_DEFAUT.find(r => r.correspondants.some(k => nom.includes(k)));
-    if (regle) {
-      [l.lieu_corr, l.coord_corr] = lieuDefini(regle, index);
-      bilan.defaut++;
-      bilan.correspondants.add(l.corr);
-    }
-  }
-  return bilan;
-}
-
-/* ---------- Niveau des lieux : lieu précis ou ville ---------- */
-// Un sous-lieu est rattaché à sa ville d'après son nom : « Prison de l'Abbaye, Paris (France) » -> « Paris (France) ».
-// La ville n'est retenue que si elle figure elle-même dans les données avec des coordonnées ;
-// sinon le lieu reste tel quel. Le fichier data.json n'est pas modifié.
-let nbRattaches = 0;
-function preparerVilles() {
-  const coordParNom = new Map();
-  for (const l of DATA) {
-    if (l.lieu_bm && l.coord_bm && !coordParNom.has(l.lieu_bm)) coordParNom.set(l.lieu_bm, l.coord_bm);
-    if (l.lieu_corr && l.coord_corr && !coordParNom.has(l.lieu_corr)) coordParNom.set(l.lieu_corr, l.coord_corr);
-  }
-  const rattaches = new Set();
-  const ville = (nom, coord) => {
-    const i = nom.lastIndexOf(",");
-    const cle = i < 0 ? "" : nom.slice(i + 1).trim();
-    if (cle && coordParNom.has(cle)) { rattaches.add(nom); return [cle, coordParNom.get(cle)]; }
-    return [nom, coord];
-  };
-  for (const l of DATA) {
-    const b = ville(l.lieu_bm || "", l.coord_bm), c = ville(l.lieu_corr || "", l.coord_corr);
-    l.ville_bm = b[0]; l.coord_ville_bm = b[1];
-    l.ville_corr = c[0]; l.coord_ville_corr = c[1];
-  }
-  nbRattaches = rattaches.size;
-}
-
-const parVille = () => etat.niveau === "ville";
-const bmNom = l => (parVille() && "ville_bm" in l) ? l.ville_bm : l.lieu_bm;
-const bmCoord = l => (parVille() && "coord_ville_bm" in l) ? l.coord_ville_bm : l.coord_bm;
-const corrNom = l => (parVille() && "ville_corr" in l) ? l.ville_corr : l.lieu_corr;
-const corrCoord = l => (parVille() && "coord_ville_corr" in l) ? l.coord_ville_corr : l.coord_corr;
-
-// Lieu d'envoi de la lettre : celui de Beaumarchais s'il écrit, celui de son correspondant s'il reçoit.
-const origine = l => l.sens === "sortant" ? bmCoord(l) : corrCoord(l);
-const nomOrigine = l => l.sens === "sortant" ? bmNom(l) : corrNom(l);
-const destination = l => l.sens === "sortant" ? corrCoord(l) : bmCoord(l);
-const nomDestination = l => l.sens === "sortant" ? corrNom(l) : bmNom(l);
-
-/* ---------- Filtres ---------- */
-const passeFiltres = (l, avecPeriode) =>
-  origine(l) &&
-  (!avecPeriode || (l.annee >= etat.min && l.annee <= etat.max)) &&
-  (!etat.corr || l.corr === etat.corr) &&
-  (!etat.sens || l.sens === etat.sens);
-const filtrer = () => DATA.filter(l => passeFiltres(l, true));
-
-/* ---------- Deux écrans ---------- */
-// Page ouverte avec ?vue=carte : carte seule, pilotée par l'onglet principal via un canal de diffusion
-// (fonctionne entre onglets ou fenêtres du même navigateur, à la même adresse).
-const MODE_CARTE = new URLSearchParams(location.search).get("vue") === "carte";
-if (MODE_CARTE) { document.body.classList.add("vue-carte"); document.title = "Carte — " + document.title; }
-const canal = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("beaumarchais-carte") : null;
-
-/* ---------- Carte ---------- */
-const carte = L.map("carte").setView([46.6, 2.5], 5);
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 18,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a>'
-}).addTo(carte);
-const couche = {
-  traits: L.layerGroup().addTo(carte),       // trajets en pointillés
-  itineraire: L.layerGroup().addTo(carte),   // parcours de Beaumarchais (ligne noire)
-  cercles: L.layerGroup().addTo(carte)
-};
-
-/* ---------- Cercles : un cercle = un lieu d'envoi, pour un sens ---------- */
-function agreger(lettres) {
-  const points = new Map();
-  for (const l of lettres) {
-    const coord = origine(l);
-    if (!coord) continue;
-    const k = l.sens + "|" + coord.join(",");
-    let p = points.get(k);
-    if (!p) { p = { sens: l.sens, nom: nomOrigine(l), coord, n: 0, corrs: new Map() }; points.set(k, p); }
-    p.n++;
-    p.corrs.set(l.corr, (p.corrs.get(l.corr) || 0) + 1);
-  }
-  return { points: [...points.values()] };
-}
-
-function listeCorrespondants(corrs) {
-  const tri = [...corrs.entries()].sort((a, b) => b[1] - a[1]);
-  const visibles = tri.slice(0, 8);
-  let h = "<ul>";
-  for (const [nom, n] of visibles) {
-    h += `<li><button type="button" data-corr="${esc(nom)}">${esc(nom)}</button> (${n})</li>`;
-  }
-  if (tri.length > visibles.length) h += `<li>… et ${tri.length - visibles.length} autre(s)</li>`;
-  return h + "</ul>";
-}
-
-const titreSens = sens => sens === "sortant" ? "Lettres écrites par Beaumarchais" : "Lettres reçues par Beaumarchais";
-
-function popup(p) {
-  const qui = p.sens === "sortant" ? "Lettres écrites par Beaumarchais depuis ce lieu"
-                                   : "Lettres reçues par Beaumarchais, envoyées depuis ce lieu";
-  return `<strong>${esc(p.nom)}</strong><br><em>${qui}</em><br>` +
-    `${pluriel(p.n, "lettre", "lettres")}. ${p.sens === "sortant" ? "Destinataires" : "Expéditeurs"} :` + listeCorrespondants(p.corrs);
-}
-
-/* ---------- Trajets : un trait = un lieu d'envoi vers un lieu de destination, pour un sens ---------- */
-function agregerLiaisons(lettres) {
-  const liens = new Map();
-  for (const l of lettres) {
-    const oC = origine(l), dC = destination(l);
-    if (!oC || !dC || (oC[0] === dC[0] && oC[1] === dC[1])) continue;   // lieu inconnu ou même lieu : pas de trait
-    const k = l.sens + "|" + oC.join(",") + ">" + dC.join(",");
-    let e = liens.get(k);
-    if (!e) { e = { sens: l.sens, de: nomOrigine(l), vers: nomDestination(l), a: oC, b: dC, n: 0, corrs: new Map() }; liens.set(k, e); }
-    e.n++;
-    e.corrs.set(l.corr, (e.corrs.get(l.corr) || 0) + 1);
-  }
-  return [...liens.values()];
-}
-
-// Courbe de Bézier entre a et b, calculée en projection Mercator pour rester régulière à l'écran.
-// Le trait est courbé vers la droite du sens de parcours : Paris→Lyon et Lyon→Paris ne se superposent pas.
-function trace(a, b, k) {
-  if (!k) return [a, b];
-  const x0 = a[1], y0 = merc(a[0]), x1 = b[1], y1 = merc(b[0]);
-  const dx = x1 - x0, dy = y1 - y0;
-  const cx = (x0 + x1) / 2 + k * dy, cy = (y0 + y1) / 2 - k * dx;   // milieu décalé perpendiculairement, à droite
-  const pts = [];
-  for (let i = 0; i <= 24; i++) {
-    const s = i / 24, u = 1 - s;
-    pts.push([inverseMerc(u * u * y0 + 2 * u * s * cy + s * s * y1), u * u * x0 + 2 * u * s * cx + s * s * x1]);
-  }
-  return pts;
-}
-
-function popupLien(e) {
-  return `<strong>${esc(e.de)} → ${esc(e.vers)}</strong><br><em>${titreSens(e.sens)}</em><br>` +
-    `${pluriel(e.n, "lettre", "lettres")}.` + listeCorrespondants(e.corrs);
-}
-
-/* ---------- Parcours : où Beaumarchais écrit, dans l'ordre chronologique ---------- */
-function parcours(lettres) {
-  const etapes = [];
-  const triees = lettres.filter(l => l.sens === "sortant" && bmCoord(l))
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  for (const l of triees) {
-    const coord = bmCoord(l), cle = coord.join(",");
-    const derniere = etapes[etapes.length - 1];
-    if (derniere && derniere.cle === cle) {   // toujours au même endroit : on prolonge l'étape
-      derniere.fin = l.date; derniere.idFin = l.id; derniere.n++;
-    } else {
-      etapes.push({ cle, nom: bmNom(l), coord, debut: l.date, idDebut: l.id, fin: l.date, idFin: l.id, n: 1 });
-    }
-  }
-  return etapes;
-}
-
-function infoEtape(a, b) {   // infobulle au survol du trait
-  return `<strong>${esc(a.nom)} → ${esc(b.nom)}</strong><br>${esc(dateFr(a.fin))} → ${esc(dateFr(b.debut))}`;
-}
-
-function popupEtape(a, b) {
-  return `<strong>${esc(a.nom)} → ${esc(b.nom)}</strong><br>` +
-    `Dernière lettre écrite de ${esc(a.nom)} : ${esc(dateFr(a.fin))} (${lienNotice(a.idFin)})<br>` +
-    `Première lettre écrite de ${esc(b.nom)} : ${esc(dateFr(b.debut))} (${lienNotice(b.idDebut)})`;
-}
-
-function fleche(pts) {   // petite flèche noire au milieu du trait, orientée dans le sens du déplacement
-  const i = Math.floor(pts.length / 2);
-  const dx = pts[i + 1][1] - pts[i - 1][1], dy = merc(pts[i + 1][0]) - merc(pts[i - 1][0]);
-  const angle = -Math.atan2(dy, dx) * 180 / Math.PI;   // l'axe vertical de l'écran est inversé
-  return L.marker(pts[i], {
-    interactive: false, keyboard: false,
-    icon: L.divIcon({
-      className: "fleche", iconSize: [12, 12], iconAnchor: [6, 6],
-      html: `<div style="width:12px;height:12px;transform:rotate(${angle}deg)"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 6L1 11Z" fill="#111"/></svg></div>`
-    })
-  });
-}
-
-/* ---------- Frise chronologique ---------- */
-function dessinerFrise() {
-  const n = anneeMax - anneeMin + 1;
-  const cols = Array.from({ length: n }, () => ({ sortant: 0, entrant: 0 }));
-  for (const l of DATA) if (dansFenetre(l) && passeFiltres(l, false)) cols[l.annee - anneeMin][l.sens]++;   // tout sauf la période
-  const maxCol = Math.max(1, ...cols.map(c => c.sortant + c.entrant));
-  const hauteur = v => v ? Math.max(100 * v / maxCol, 2) : 0;
-
-  const pas = n > 40 ? 10 : 5;
-  const gabarit = `repeat(${n}, 1fr)`;
-  for (const id of ["barres", "axe"]) $(id).style.gridTemplateColumns = gabarit;
-
-  $("barres").innerHTML = cols.map((c, i) => {
-    const a = anneeMin + i, total = c.sortant + c.entrant, hors = a < etat.min || a > etat.max;
-    return `<div class="col${hors ? " hors" : ""}" title="${a} : ${pluriel(total, "lettre", "lettres")} ` +
-      `(${c.sortant} écrite(s) par Beaumarchais, ${c.entrant} reçue(s))">` +
-      `<div class="b bleu" style="height:${hauteur(c.entrant)}%"></div>` +
-      `<div class="b rouge" style="height:${hauteur(c.sortant)}%"></div></div>`;
-  }).join("");
-
-  $("axe").innerHTML = cols.map((_, i) => {
-    const a = anneeMin + i;
-    return `<div>${a % pas === 0 || i === 0 || i === n - 1 ? `<span>${a}</span>` : ""}</div>`;
-  }).join("");
-}
-
-function anneeSousLaSouris(e) {
-  const r = $("barres").getBoundingClientRect();
-  const x = Math.min(Math.max(e.clientX - r.left, 0), r.width - 1);
-  return anneeMin + Math.floor(x / r.width * (anneeMax - anneeMin + 1));
-}
-
-function appliquerPeriode(min, max) {   // change la période sans interrompre une lecture en cours
-  if (min === etat.min && max === etat.max) return;
-  etat.min = min; etat.max = max;
-  $("anneeMin").value = min; $("anneeMax").value = max;
-  afficher();
-}
-
-function majPeriode(min, max) {   // changement de période par l'utilisateur : il arrête la lecture
-  arreterLecture();
-  appliquerPeriode(min, max);
-}
-
-/* ---------- Lecture chronologique : la période avance année après année ---------- */
-let lecture = null;     // { debut, fin, annee } : la période choisie et l'année en cours de lecture
-let minuteur = null;    // minuteur du prochain pas (null en pause)
-
-const delaiLecture = () => ({ lente: 1500, normale: 800, rapide: 400 }[$("vitesseLecture").value] || 800);
-
-function periodeDeLecture(annee) {   // année par année : [annee, annee] ; cumulé : du début à l'année en cours
-  return $("modeLecture").value === "cumul" ? [lecture.debut, annee] : [annee, annee];
-}
-
-function boutonLecture(texte, actif) {
-  $("btnLecture").textContent = texte;
-  $("btnLecture").setAttribute("aria-pressed", String(actif));
-}
-
-function demarrerLecture() {
-  if (!lecture) {
-    // une seule année sélectionnée : on lit toute la frise ; sinon, la période choisie
-    const unique = etat.min === etat.max;
-    const debut = unique ? anneeMin : etat.min, fin = unique ? anneeMax : etat.max;
-    lecture = { debut, fin, annee: debut - 1 };
-  }
-  boutonLecture("Pause", true);
-  avancerLecture();
-}
-
-function avancerLecture() {
-  if (!lecture) return;
-  if (lecture.annee >= lecture.fin) return terminerLecture();   // dernière année déjà montrée
-  lecture.annee++;
-  const [min, max] = periodeDeLecture(lecture.annee);
-  appliquerPeriode(min, max);
-  $("etatLecture").textContent = "Lecture : " + lecture.annee;
-  minuteur = setTimeout(avancerLecture, delaiLecture());   // après la dernière année : pause, puis fin de lecture
-}
-
-function pauseLecture() {
-  clearTimeout(minuteur); minuteur = null;
-  boutonLecture("Reprendre", false);
-  $("etatLecture").textContent = "En pause : " + lecture.annee;
-}
-
-function arreterLecture() {
-  clearTimeout(minuteur); minuteur = null; lecture = null;
-  boutonLecture("Lecture", false);
-  $("etatLecture").textContent = "";
-}
-
-function terminerLecture() {
-  const fini = lecture;
-  arreterLecture();
-  if (fini) appliquerPeriode(fini.debut, fini.fin);   // rétablit la période choisie avant la lecture
-}
-
-/* ---------- Synchronisation des deux écrans ---------- */
-let dernierEnvoi = "";
-function diffuser(force = false) {   // onglet principal -> onglet « carte seule »
-  if (!canal || MODE_CARTE) return;
-  const { min, max, corr, sens, niveau, liens, suivi } = etat;
-  const message = JSON.stringify({ min, max, corr, sens, niveau, liens, suivi });
-  if (!force && message === dernierEnvoi) return;   // rien n'a changé (ex. simple zoom)
-  dernierEnvoi = message;
-  canal.postMessage({ type: "etat", etat: JSON.parse(message) });
-}
-
-function appliquerEtatRecu(e) {   // onglet « carte seule » : reprend les réglages de l'onglet principal
-  const niveauChange = e.niveau !== etat.niveau;
-  Object.assign(etat, { min: e.min, max: e.max, corr: e.corr, sens: e.sens, niveau: e.niveau, liens: e.liens, suivi: e.suivi });
-  if (niveauChange) echelles();
-  afficher();
-}
-
-function filtrerSurCorrespondant(nom) {   // depuis une bulle ; dans la carte seule, c'est l'onglet principal qui filtre
-  carte.closePopup();
-  if (MODE_CARTE && canal) { canal.postMessage({ type: "corr", corr: nom }); return; }
-  etat.corr = nom; $("filtrecorr").value = nom;
-  afficher();
-}
-
-function ouvrirCarteSeule() {
-  const adresse = new URL(location.href);
-  adresse.search = "?vue=carte"; adresse.hash = "";
-  window.open(adresse.toString(), "beaumarchais-carte");   // même nom : un second clic réutilise l'onglet
-  setTimeout(() => diffuser(true), 800);
-}
-
-/* ---------- Affichage ---------- */
-function afficher() {
-  $("sortieMin").textContent = etat.min; $("sortieMax").textContent = etat.max;
-  dessinerFrise();
-
-  const lettres = filtrer();
-  const { points } = agreger(lettres);
-
-  // trajets en pointillés
-  couche.traits.clearLayers();
-  let nbLiens = 0;
-  if (etat.liens) {
-    const liens = agregerLiaisons(lettres).sort((a, b) => b.n - a.n);   // les plus épais d'abord
-    nbLiens = liens.length;
-    liens.forEach(e => {
-      const couleur = e.sens === "sortant" ? "#c62d2d" : "#1f5fbf";
-      L.polyline(trace(e.a, e.b, CONFIG.courbure), {
-        color: couleur, weight: 1.5 + 3.5 * Math.sqrt(e.n / maxLien), opacity: .7, dashArray: "6 6"
-      }).bindPopup(popupLien(e)).addTo(couche.traits);
-    });
-  }
-
-  // parcours de Beaumarchais (ligne noire)
-  couche.itineraire.clearLayers();
-  let nbEtapes = 0;
-  if (etat.suivi) {
-    // le parcours suit la période, mais pas les autres filtres (sinon il serait faussé)
-    const etapes = parcours(DATA.filter(l => l.annee >= etat.min && l.annee <= etat.max));
-    nbEtapes = etapes.length;
-    for (let i = 0; i + 1 < etapes.length; i++) {
-      const a = etapes[i], b = etapes[i + 1];
-      const pts = trace(a.coord, b.coord, CONFIG.courbure);
-      const trait = L.polyline(pts, { color: "#111", weight: 2, opacity: .85, interactive: false }).addTo(couche.itineraire);
-      // zone de survol plus large et invisible, pour attraper facilement un trait fin
-      L.polyline(pts, { weight: 14, opacity: 0 })
-        .bindTooltip(infoEtape(a, b), { sticky: true })
-        .bindPopup(popupEtape(a, b))
-        .on("mouseover", () => trait.setStyle({ weight: 4 }))
-        .on("mouseout", () => trait.setStyle({ weight: 2 }))
-        .addTo(couche.itineraire);
-      // pas de flèche si le trait est trop court à ce niveau de zoom
-      if (carte.latLngToContainerPoint(a.coord).distanceTo(carte.latLngToContainerPoint(b.coord)) >= 40) {
-        fleche(pts).addTo(couche.itineraire);
-      }
-    }
-  }
-
-  // cercles : les plus gros d'abord, pour que les petits restent cliquables par-dessus
-  couche.cercles.clearLayers();
-  points.sort((a, b) => b.n - a.n).forEach(p => {
-    const couleur = p.sens === "sortant" ? "#c62d2d" : "#1f5fbf";   // rouge : écrites par Beaumarchais, bleu : reçues
-    const rayon = 4 + (CONFIG.rayonMax - 4) * Math.sqrt(p.n / maxGlobal);   // surface ∝ nombre de lettres
-    L.circleMarker(p.coord, { radius: rayon, color: couleur, weight: 1.5, fillColor: couleur, fillOpacity: .5 })
-      .bindPopup(popup(p)).addTo(couche.cercles);
-  });
-
-  if (premierAffichage && points.length) {
-    carte.fitBounds(L.latLngBounds(points.map(p => p.coord)), { padding: [40, 40], maxZoom: 8 });
-    premierAffichage = false;
-  }
-
-  const total = DATA.filter(l => origine(l) && dansFenetre(l)).length;
-  const horsFenetre = DATA.filter(l => origine(l) && !dansFenetre(l)).length;
-  $("etat").textContent = `${pluriel(lettres.length, "lettre affichée", "lettres affichées")} sur ${total} (lieu d'envoi localisé).` +
-    (horsFenetre ? ` ${horsFenetre} lettre(s) datée(s) hors de ${anneeMin}–${anneeMax} non affichée(s).` : "") +
-    (etat.liens ? ` ${pluriel(nbLiens, "trajet tracé", "trajets tracés")}.` : "") +
-    (etat.suivi ? ` Parcours de Beaumarchais : ${pluriel(nbEtapes, "étape", "étapes")}.` : "") +
-    (parVille() ? ` Regroupement par ville : ${nbRattaches} lieu(x) précis rattaché(s) à leur ville.` : "");
-
-  // tableau
-  const lignes = lettres.slice(0, CONFIG.lignesMax).map(l =>
-    `<tr><td class="nb">${esc(l.date)}</td><td>${lienNotice(l.id)}</td>` +
-    `<td>${esc(l.exp)} → ${esc(l.dest)}</td>` +
-    `<td>${esc(nomOrigine(l) || "lieu inconnu")} → ${esc(nomDestination(l) || "lieu inconnu")}</td></tr>`);
-  if (lettres.length > CONFIG.lignesMax) {
-    lignes.push(`<tr><td colspan="4">… ${lettres.length - CONFIG.lignesMax} autres lettres : affinez les filtres pour les voir.</td></tr>`);
-  }
-  $("lignes").innerHTML = lignes.join("");
-
-  if (MODE_CARTE) {   // repères lisibles de loin dans la vue « carte seule »
-    $("surPeriode").textContent = etat.min === etat.max ? String(etat.min) : `${etat.min} – ${etat.max}`;
-    $("surDetail").textContent = pluriel(lettres.length, "lettre", "lettres") +
-      (etat.corr ? " · " + etat.corr : "") +
-      (etat.sens ? " · " + (etat.sens === "sortant" ? "écrites par Beaumarchais" : "reçues par Beaumarchais") : "");
-  }
-  diffuser();
-}
-
-/* ---------- Initialisation ---------- */
-function echelles() {   // échelles fixes, quel que soit le filtre (recalculées si le niveau des lieux change)
-  const dansLaFenetre = DATA.filter(dansFenetre);
-  maxGlobal = Math.max(1, ...agreger(dansLaFenetre).points.map(p => p.n));
-  maxLien = Math.max(1, ...agregerLiaisons(dansLaFenetre).map(e => e.n));
-}
-
-function remplirCorrespondants() {
-  const compte = new Map();
-  DATA.forEach(l => compte.set(l.corr, (compte.get(l.corr) || 0) + 1));
-  $("filtrecorr").innerHTML = `<option value="">Tous les correspondants</option>` +
-    [...compte.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr"))
-      .map(([v, n]) => `<option value="${esc(v)}">${esc(v)} (${n})</option>`).join("");
-  $("filtrecorr").addEventListener("change", e => { etat.corr = e.target.value; afficher(); });
-}
-
-function initialiser() {
-  [anneeMin, anneeMax] = CONFIG.periode;
-  etat.min = anneeMin; etat.max = anneeMax;
-  for (const id of ["anneeMin", "anneeMax"]) { $(id).min = anneeMin; $(id).max = anneeMax; }
-  $("anneeMin").value = anneeMin; $("anneeMax").value = anneeMax;
-
-  $("anneeMin").addEventListener("input", () => {
-    const a = +$("anneeMin").value; let b = +$("anneeMax").value;
-    if (a > b) { b = a; $("anneeMax").value = b; }
-    majPeriode(a, b);
-  });
-  $("anneeMax").addEventListener("input", () => {
-    let a = +$("anneeMin").value; const b = +$("anneeMax").value;
-    if (b < a) { a = b; $("anneeMin").value = a; }
-    majPeriode(a, b);
-  });
-  $("btnPeriodeTout").addEventListener("click", () => majPeriode(anneeMin, anneeMax));
-  $("btnLecture").addEventListener("click", () => { if (minuteur) pauseLecture(); else demarrerLecture(); });
-
-  // frise : clic ou glissement pour choisir la période
-  const barres = $("barres");
-  let depart = null;
-  barres.addEventListener("pointerdown", e => {
-    barres.setPointerCapture(e.pointerId);
-    depart = anneeSousLaSouris(e);
-    majPeriode(depart, depart);
-  });
-  barres.addEventListener("pointermove", e => {
-    if (depart === null) return;
-    const a = anneeSousLaSouris(e);
-    majPeriode(Math.min(depart, a), Math.max(depart, a));
-  });
-  for (const type of ["pointerup", "pointercancel"]) barres.addEventListener(type, () => { depart = null; });
-
-  remplirCorrespondants();
-  $("filtreSens").addEventListener("change", e => { etat.sens = e.target.value; afficher(); });
-
-  // niveau des lieux
-  $("niveauLieux").addEventListener("change", e => { etat.niveau = e.target.value; echelles(); afficher(); });
-
-  $("optLiens").addEventListener("change", e => { etat.liens = e.target.checked; afficher(); });
-  $("optSuivi").addEventListener("change", e => { etat.suivi = e.target.checked; afficher(); });
-  carte.on("zoomend", () => { if (etat.suivi) afficher(); });   // les flèches dépendent du niveau de zoom
-
-  // clic sur un correspondant dans une bulle -> filtre
-  carte.on("popupopen", e => {
-    e.popup.getElement().querySelectorAll("button[data-corr]").forEach(b =>
-      b.addEventListener("click", () => filtrerSurCorrespondant(b.dataset.corr)));
-  });
-
-  const bilan = appliquerDestinations();   // avant preparerVilles : les nouveaux lieux comptent pour le regroupement
-  if (bilan.defaut || bilan.parLettre) {
-    const noms = [...bilan.correspondants].sort((a, b) => a.localeCompare(b, "fr"));
-    $("noteDestinations").hidden = false;
-    $("noteDestinations").textContent = "Lieux de destination attribués d'après les réglages : " +
-      `${pluriel(bilan.defaut, "lettre", "lettres")} par défaut (correspondants : ${noms.join(" ; ") || "aucun"}) ; ` +
-      `${bilan.parLettre} lettre(s) réglée(s) une à une.`;
-  }
-  preparerVilles();
-  $("btnOuvrirCarte").addEventListener("click", ouvrirCarteSeule);
-  if (canal) {
-    canal.addEventListener("message", m => {
-      const d = m.data || {};
-      if (MODE_CARTE && d.type === "etat") appliquerEtatRecu(d.etat);
-      else if (!MODE_CARTE && d.type === "pret") diffuser(true);   // l'onglet carte vient de s'ouvrir
-      else if (!MODE_CARTE && d.type === "corr") filtrerSurCorrespondant(d.corr);   // clic dans la carte seule
-    });
-    if (MODE_CARTE) canal.postMessage({ type: "pret" });
-  }
-
-  echelles();
-  afficher();
-}
-
-fetch(CONFIG.donnees)
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(d => { DATA = d; })
-  .then(() => initialiser())
-  .catch(err => {
-    $("etat").textContent = "Impossible d'afficher la carte (" + err.message + "). Ouvrez la page via un serveur web " +
-      "(ex. « python3 -m http.server ») et non en double-cliquant sur le fichier ; vérifiez aussi que " + CONFIG.donnees + " existe.";
-  });
-
-</script>
 <div style="position:fixed; bottom:6px; right:10px; z-index:2000; font:.7rem/1.3 system-ui,-apple-system,sans-serif; color:#888; background:rgba(255,255,255,.85); padding:2px 8px; border-radius:4px; pointer-events:auto;">
   Site conçu par <a href="https://ircl.cnrs.fr/membres/tardy-hugo/" target="_blank" rel="noopener" style="color:#888;">Hugo Tardy</a> pour le projet ANR <a href="https://archibeau.hypotheses.org/" target="_blank" rel="noopener" style="color:#888;">@rchibeau</a>
 </div>
+<script type="text/javascript">
+  var timeline_json = {"title": {"text": {"headline": "Beaumarchais (1732–1799)", "text": "<p>Frise complète — jalons majeurs de la vie de Beaumarchais, détails biographiques, et grand contexte historique.</p><p>Cette chronologie a pour base de départ les trois sources suivantes, combinées : Beaumarchais, <em>Œuvres</em>, P. &amp; J. Larthomas éd., Paris : Gallimard (Pléiade), 1988 ; Lever M., <em>Pierre-Augustin Caron de Beaumarchais</em>, 3 vol., Paris : Fayard, 2003-2005 ; Ubersfeld A., « Chronologie de Beaumarchais », <em>Europe</em>, 1973, p. 141-148.</p><p>L'ensemble a été compilé par Magali Soulatges et mis en page et en ligne par Hugo Tardy.</p>"}}, "eras": [{"start_date": {"year": 1756}, "end_date": {"year": 1763}, "text": {"headline": "Guerre de Sept Ans"}}, {"start_date": {"year": 1775}, "end_date": {"year": 1783}, "text": {"headline": "Guerre d'indépendance américaine"}}, {"start_date": {"year": 1789}, "end_date": {"year": 1799, "month": 11}, "text": {"headline": "Révolution française"}}], "events": [{"start_date": {"year": 1732, "month": 1, "day": 24}, "text": {"headline": "Naissance de Pierre-Augustin Caron (futur Beaumarchais)", "text": "<p>Il naît rue Saint-Denis à Paris ; baptisé le lendemain à Saint-Jacques-de-la-Boucherie.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e0"}, {"start_date": {"year": 1742}, "text": {"headline": "Formation à l'école des métiers d'Alfort puis chez son père", "text": "<p>Il y apprend l'horlogerie ainsi que la musique et la poésie.</p>"}, "group": "Vie – jalons majeurs", "display_date": "1742-1745", "unique_id": "e1"}, {"start_date": {"year": 1753}, "text": {"headline": "Invente un nouveau système d'échappement", "text": "<p>L'horloger du roi, Lepaute, présente cette invention comme sienne à l'Académie des sciences.</p>"}, "group": "Vie – jalons majeurs", "display_date": "1753", "unique_id": "e2"}, {"start_date": {"year": 1754, "month": 2, "day": 23}, "text": {"headline": "L'Académie reconnaît Beaumarchais comme l'inventeur", "text": "<p>Désormais connu, il reçoit des commandes pour la cour et est présenté au roi et à la reine.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e3"}, {"start_date": {"year": 1755, "month": 11, "day": 9}, "text": {"headline": "Beaumarchais obtient une charge à la Maison du roi", "text": "<p>Transfert de la charge de contrôleur clerc d'office par Pierre-Augustin Franquet.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e4"}, {"start_date": {"year": 1756, "month": 11, "day": 27}, "text": {"headline": "Beaumarchais épouse Madeleine-Catherine Aubertin, veuve Franquet", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e5"}, {"start_date": {"year": 1757}, "text": {"headline": "Il prend le nom de « Caron de Beaumarchais »", "text": "<p>Du nom d'une terre héritée par sa femme.</p>"}, "group": "Vie – jalons majeurs", "display_date": "1757", "unique_id": "e6"}, {"start_date": {"year": 1757}, "text": {"headline": "Débuts d'auteur dramatique auprès de Le Normant d'Étiolles", "text": "<p>Il écrit ses premières parades pour le petit théâtre du mari de la marquise de Pompadour.</p>"}, "group": "Vie – jalons majeurs", "display_date": "1757 ou 1758", "unique_id": "e7"}, {"start_date": {"year": 1757, "month": 11, "day": 30}, "text": {"headline": "Mort de sa femme : Beaumarchais ruiné", "text": "<p>Le contrat de mariage n'ayant pas été « insinué » à temps, il ne peut hériter et se retrouve accablé de dettes.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Nuit du 29 au 30 novembre 1757", "unique_id": "e8"}, {"start_date": {"year": 1759}, "text": {"headline": "Devient indispensable auprès de Mesdames, filles du roi", "text": "<p>Leçons de musique et de harpe ; il rencontre vers cette époque le financier Pâris-Duverney.</p>"}, "group": "Vie – jalons majeurs", "display_date": "1759", "unique_id": "e9"}, {"start_date": {"year": 1760, "month": 8, "day": 18}, "text": {"headline": "Fait visiter l'École militaire au roi", "text": "<p>Pâris-Duverney, reconnaissant, associe Beaumarchais à ses affaires et l'enrichit considérablement.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e10"}, {"start_date": {"year": 1761, "month": 12}, "text": {"headline": "Achète la charge de conseiller secrétaire du roi", "text": "<p>Cette charge, financée en grande partie par Pâris-Duverney, l'anoblit et lui permet de porter légalement le nom de Beaumarchais.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Décembre 1761", "unique_id": "e11"}, {"start_date": {"year": 1764, "month": 4, "day": 20}, "text": {"headline": "Départ pour l'Espagne", "text": "<p>Mission pour marier sa sœur Lisette et régler des dettes considérables.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e12"}, {"start_date": {"year": 1765, "month": 3, "day": 22}, "text": {"headline": "Quitte Madrid : échec de ses missions espagnoles", "text": "<p>Choiseul, insatisfait de son agent, n'a pas obtenu les résultats espérés.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e13"}, {"start_date": {"year": 1767, "month": 1, "day": 29}, "text": {"headline": "Première d'Eugénie à la Comédie-Française", "text": "<p>Son premier drame sérieux ; à peine un demi-succès.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e14"}, {"start_date": {"year": 1768, "month": 4, "day": 11}, "text": {"headline": "Mariage avec Geneviève-Madeleine Wattebled", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e15"}, {"start_date": {"year": 1768, "month": 12, "day": 14}, "text": {"headline": "Naissance de son fils Augustin de Beaumarchais", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e16"}, {"start_date": {"year": 1770, "month": 1, "day": 13}, "text": {"headline": "Première des Deux Amis : échec total", "text": "<p>Dix représentations seulement.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e17"}, {"start_date": {"year": 1770, "month": 7, "day": 17}, "text": {"headline": "Mort de Pâris-Duverney, son protecteur", "text": "<p>Décès à quatre-vingt-six ans, ce qui va priver Beaumarchais d'un appui décisif.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e18"}, {"start_date": {"year": 1770, "month": 11, "day": 20}, "text": {"headline": "Mort de sa seconde femme", "text": "<p>Sa fortune, en viager, échappe à Beaumarchais.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e19"}, {"start_date": {"year": 1771}, "text": {"headline": "Le Barbier de Séville (1ère version) refusé par les Comédiens Italiens", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "1771", "unique_id": "e20"}, {"start_date": {"year": 1771, "month": 10}, "text": {"headline": "Début du procès avec le comte de La Blache", "text": "<p>La Blache, héritier de Pâris-Duverney, conteste l'arrêté de compte entre son oncle et Beaumarchais.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Octobre 1771", "unique_id": "e21"}, {"start_date": {"year": 1772, "month": 2, "day": 22}, "text": {"headline": "Beaumarchais gagne son procès contre La Blache en première instance", "text": "<p>Son adversaire fait appel devant le parlement de Paris.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e22"}, {"start_date": {"year": 1772, "month": 10, "day": 17}, "text": {"headline": "Mort de son fils Augustin", "text": "<p>À l'âge de trois ans et huit mois.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e23"}, {"start_date": {"year": 1773, "month": 2, "day": 11}, "text": {"headline": "Altercation avec le duc de Chaulnes", "text": "<p>Le duc, qui accuse Beaumarchais de lui ravir sa maîtresse, est emprisonné le 19 à Vincennes.</p>"}, "group": "Vie – jalons majeurs", "display_date": "11-19 février 1773", "unique_id": "e24"}, {"start_date": {"year": 1773, "month": 2, "day": 26}, "text": {"headline": "Incarcération de Beaumarchais", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "26 février - 8 mai 1773", "unique_id": "e25"}, {"start_date": {"year": 1773, "month": 4, "day": 6}, "text": {"headline": "Beaumarchais perd son procès contre La Blache : quasi-ruine", "text": "<p>Sur rapport défavorable du conseiller Goëzman.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e26"}, {"start_date": {"year": 1773, "month": 7, "day": 10}, "text": {"headline": "Beaumarchais décrété « d'ajournement personnel »", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e27"}, {"start_date": {"year": 1773, "month": 9}, "text": {"headline": "Publication des trois premiers Mémoires contre Goëzman", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "Septembre-décembre 1773", "unique_id": "e28"}, {"start_date": {"year": 1774}, "text": {"headline": "Rencontre avec Marie-Thérèse de Willermaulaz", "text": "<p>Il vivra désormais avec elle, mais ne l'épousera qu'en 1786.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Début 1774", "unique_id": "e29"}, {"start_date": {"year": 1774, "month": 2, "day": 10}, "text": {"headline": "Publication du quatrième Mémoire contre Goëzman", "text": "<p>Cette publication entraîne l'interdiction de représenter Le Barbier de Séville.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e30"}, {"start_date": {"year": 1774, "month": 2, "day": 26}, "text": {"headline": "Arrêt Goëzman : Beaumarchais blâmé, perte de ses droits civils", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e31"}, {"start_date": {"year": 1774, "month": 3}, "text": {"headline": "Premier séjour à Londres pour Louis XV", "text": "<p>Il obtient du libelliste Morande la destruction d'un libelle contre la comtesse Du Barry.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Mars-mai 1774", "unique_id": "e32"}, {"start_date": {"year": 1774, "month": 8}, "text": {"headline": "Mission à Vienne : retenu prisonnier à la cour", "text": "<p>Poursuivant Angelucci, auteur d'un pamphlet contre Marie-Antoinette.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Août-23 septembre 1774", "unique_id": "e33"}, {"start_date": {"year": 1775}, "text": {"headline": "Début de la correspondance avec Vergennes", "text": "<p>Elle se poursuivra jusqu'à la mort du ministre en 1787.</p>"}, "group": "Vie – jalons majeurs", "display_date": "1775", "media": {"url": "https://upload.wikimedia.org/wikipedia/commons/a/a2/The_Count_of_Vergennes_by_Antoine_Fran%C3%A7ois_Callet_circa_1774-87.jpg", "caption": "Charles Gravier, comte de Vergennes", "credit": "Antoine François Callet, v. 1774-87 (Wikimedia Commons)"}, "unique_id": "e34"}, {"start_date": {"year": 1775, "month": 2, "day": 26}, "text": {"headline": "Triomphe du Barbier de Séville", "text": "<p>Réduite à quatre actes après l'échec du 23 février, la pièce triomphe enfin.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e35"}, {"start_date": {"year": 1775, "month": 8}, "text": {"headline": "Premiers Mémoires au roi sur l'aide à apporter aux insurgés américains", "text": "<p><a href=\"https://beaumarchais.huma-num.fr/Inventaire/Correspondance?ID=286\" target=\"_blank\" rel=\"noopener\"><strong>IDC 286</strong></a> — BEAUMARCHAIS à LOUIS XVI — [21 Septembre 1775] : « La guerre ouverte qui se fait en Amérique est bien moins funeste encore à l'Angleterre que la guerre intestine qui doit éclater avant peu dans Londres ; l'aigreur entre les partis y est montée au plus haut excès depuis la proclamation du roi d'Angleterre qui déclare les Américains rebelles. Cette ineptie, ce chef-d'œuvre de démence de la part du gouvernement a renouvelé les forces de tous les opposants en les réunissant contre lui ; la résolution est prise de rompre en visière ouvertement au parti de la cour dans les premières séances du parlement. »</p>"}, "group": "Vie – jalons majeurs", "display_date": "Dès août 1775", "unique_id": "e36"}, {"start_date": {"year": 1776, "month": 2}, "text": {"headline": "Mémoire « au Roi seul » sur l'Angleterre et l'Amérique", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "Fin février 1776", "unique_id": "e37"}, {"start_date": {"year": 1776, "month": 6, "day": 10}, "text": {"headline": "Fondation de Roderigue Hortalez et Cie", "text": "<p>Beaumarchais reçoit un million de livres du Trésor, via Vergennes, pour financer secrètement les insurgés américains.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e38"}, {"start_date": {"year": 1776, "month": 7}, "text": {"headline": "Silas Deane, envoyé du Congrès américain, orienté vers Beaumarchais", "text": "<p>Vergennes lui refuse des armes officiellement, mais l'envoie négocier avec Beaumarchais.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Juillet 1776", "unique_id": "e39"}, {"start_date": {"year": 1776, "month": 9, "day": 6}, "text": {"headline": "Beaumarchais réhabilité dans tous ses droits", "text": "<p>Un arrêt du Parlement annule le jugement de 1774.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e40"}, {"start_date": {"year": 1777, "month": 1, "day": 5}, "text": {"headline": "Naissance de sa fille Eugénie de Beaumarchais", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e41"}, {"start_date": {"year": 1777, "month": 6}, "text": {"headline": "Vergennes finance l'équipement des insurgés d'Amérique via Beaumarchais", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "Juin-juillet 1777", "unique_id": "e42"}, {"start_date": {"year": 1777, "month": 7, "day": 3}, "text": {"headline": "Réunion fondatrice de la Société des auteurs dramatiques", "text": "<p>Beaumarchais réunit chez lui vingt-trois auteurs mécontents de leur sort face aux Comédiens-Français.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e43"}, {"start_date": {"year": 1777, "month": 10, "day": 26}, "text": {"headline": "Remise du Mémoire particulier pour les ministres du Roi", "text": "<p>Texte influent, remis à Vergennes, dont le gouvernement va s'inspirer.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e44"}, {"start_date": {"year": 1778}, "text": {"headline": "Le Mariage de Figaro est terminé", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "1778", "unique_id": "e45"}, {"start_date": {"year": 1778, "month": 4, "day": 16}, "text": {"headline": "Contrat avec les Américains pour le paiement des fournitures", "text": "<p>Signé après le traité d'amitié franco-américain du 6 février ; les Américains ne l'honoreront jamais.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e46"}, {"start_date": {"year": 1778, "month": 7, "day": 21}, "text": {"headline": "Le parlement d'Aix rend un arrêt favorable dans l'affaire La Blache", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e47"}, {"start_date": {"year": 1779}, "text": {"headline": "Début de l'édition des œuvres de Voltaire", "text": "<p>Cette année marque aussi le début de sa « disgrâce » à Versailles.</p>"}, "group": "Vie – jalons majeurs", "display_date": "1779", "unique_id": "e48"}, {"start_date": {"year": 1779, "month": 7, "day": 6}, "text": {"headline": "« Le Fier Roderigue » s'illustre à la reprise de la Grenade puis est détruit", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e49"}, {"start_date": {"year": 1779, "month": 7, "day": 23}, "text": {"headline": "Beaumarchais retrouve sa charge de secrétaire du roi", "text": "<p>Un arrêt du Parlement casse le décret d'ajournement personnel de 1773.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e50"}, {"start_date": {"year": 1780, "month": 12, "day": 9}, "text": {"headline": "Arrêt du Conseil d'État fixant les droits des auteurs dramatiques", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e51"}, {"start_date": {"year": 1780, "month": 12, "day": 18}, "text": {"headline": "Mise au point du projet de l'édition de Kehl des œuvres de Voltaire", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e52"}, {"start_date": {"year": 1781, "month": 1}, "text": {"headline": "Parution du prospectus de souscription de l'édition de Kehl", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "Janvier 1781", "unique_id": "e53"}, {"start_date": {"year": 1781, "month": 9, "day": 29}, "text": {"headline": "Le Mariage de Figaro reçu à l'unanimité à la Comédie-Française", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e54"}, {"start_date": {"year": 1781, "month": 10}, "text": {"headline": "Début de l'affaire Kornman", "text": "<p>Beaumarchais décide de défendre Mme Kornman, persécutée par son mari banquier.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Octobre 1781", "unique_id": "e55"}, {"start_date": {"year": 1782}, "text": {"headline": "Défense publique du Mariage de Figaro", "text": "<p>Des lectures se succèdent dans les salons, notamment devant le grand-duc de Russie.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Début 1782", "unique_id": "e56"}, {"start_date": {"year": 1783}, "text": {"headline": "Publication des premiers volumes de l'édition de Voltaire", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "1783", "unique_id": "e57"}, {"start_date": {"year": 1783, "month": 3}, "text": {"headline": "Grosses difficultés financières résolues par le gouvernement", "text": "<p>Après une lettre à Vergennes, le gouvernement verse à Beaumarchais plus de neuf cent mille livres.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Mars-avril 1783", "unique_id": "e58"}, {"start_date": {"year": 1783, "month": 6, "day": 13}, "text": {"headline": "Le Mariage de Figaro interdit au dernier moment par le roi", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e59"}, {"start_date": {"year": 1783, "month": 9, "day": 26}, "text": {"headline": "Représentation privée du Mariage de Figaro à Gennevilliers", "text": "<p>Chez le comte de Vaudreuil.</p>"}, "group": "Vie – jalons majeurs", "display_date": "27 septembre selon Ubersfeld", "unique_id": "e60"}, {"start_date": {"year": 1784, "month": 4, "day": 27}, "text": {"headline": "Première publique et triomphale du Mariage de Figaro", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e61"}, {"start_date": {"year": 1785, "month": 3, "day": 2}, "text": {"headline": "Une lettre au Journal de Paris provoque la colère du roi", "text": "<p>L'allusion aux « lions et tigres » qu'il a dû vaincre pour faire jouer sa pièce est mal reçue.</p>"}, "group": "Vie – jalons majeurs", "display_date": "2-6 mars 1785", "unique_id": "e62"}, {"start_date": {"year": 1785, "month": 3, "day": 8}, "text": {"headline": "Beaumarchais arrêté et enfermé à Saint-Lazare", "text": ""}, "group": "Vie – jalons majeurs", "display_date": "8-13 mars 1785", "unique_id": "e63"}, {"start_date": {"year": 1785, "month": 6, "day": 3}, "text": {"headline": "Suppression de l'édition de Kehl des œuvres de Voltaire", "text": "<p>Un arrêt du Conseil d'État du roi ordonne la suppression des trente volumes déjà parus.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e64"}, {"start_date": {"year": 1786, "month": 3, "day": 8}, "text": {"headline": "Mariage avec Marie-Thérèse de Willermaulaz", "text": "<p>Ils vivaient ensemble depuis douze ans.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e65"}, {"start_date": {"year": 1787, "month": 2}, "text": {"headline": "Mort de Vergennes", "text": "<p>Un des plus sûrs appuis de Beaumarchais disparaît.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Février 1787", "unique_id": "e66"}, {"start_date": {"year": 1787, "month": 2, "day": 20}, "text": {"headline": "Début de la guerre de libelles avec Kornman et Bergasse", "text": "<p>Elle durera jusqu'au printemps 1789.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e67"}, {"start_date": {"year": 1787, "month": 6, "day": 8}, "text": {"headline": "Première de Tarare", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e68"}, {"start_date": {"year": 1787, "month": 6, "day": 26}, "text": {"headline": "Achat du terrain près de la Bastille", "text": "<p>Beaumarchais y fera construire par l'architecte Lemoyne une somptueuse demeure.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e69"}, {"start_date": {"year": 1788, "month": 6}, "text": {"headline": "Plainte en diffamation dans l'affaire Kornman", "text": "<p>Beaumarchais publie son Court mémoire, qui inclut ses Idées élémentaires de 1774.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Juin 1788", "unique_id": "e70"}, {"start_date": {"year": 1789, "month": 7, "day": 15}, "text": {"headline": "Beaumarchais participe à la prise de la Bastille", "text": "<p>Il y pénètre avec vingt-quatre hommes en armes, un jour après la prise de la forteresse par le peuple parisien.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e71"}, {"start_date": {"year": 1789, "month": 8, "day": 12}, "text": {"headline": "Exclu de l'Assemblée des représentants", "text": "<p>À la suite d'une dénonciation, Beaumarchais est exclu de l'Assemblée des représentants de la Commune de Paris.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e72"}, {"start_date": {"year": 1789, "month": 9, "day": 15}, "text": {"headline": "Réhabilité, invité à reprendre sa place", "text": "<p>Après sa Requête aux représentants de la commune, Beaumarchais est invité à reprendre sa place à l'Assemblée.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e73"}, {"start_date": {"year": 1791, "month": 11}, "text": {"headline": "Premières inquiétudes autour d'un achat d'armes", "text": "<p>Alerté par son associé La Hogue, Beaumarchais commence à s'inquiéter d'un achat d'armes qui manquent cruellement à la France : prémices de l'affaire des fusils de Hollande.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Novembre 1791", "unique_id": "e74"}, {"start_date": {"year": 1792, "month": 3}, "text": {"headline": "Début de l'affaire des fusils de Hollande", "text": "<p>Le libraire bruxellois Delahaye propose à Beaumarchais l'achat d'armes ; un marché est conclu le 16 mars.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Début mars 1792", "unique_id": "e75"}, {"start_date": {"year": 1792, "month": 4, "day": 3}, "text": {"headline": "Signature du « traité des fusils »", "text": "<p>Beaumarchais signe avec Pierre Marie, marquis de Graves, ministre de la Guerre, le traité organisant l'achat des fusils de Hollande.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e76"}, {"start_date": {"year": 1792, "month": 6, "day": 4}, "text": {"headline": "Dénoncé à l'Assemblée comme accapareur d'armes", "text": "<p>Il est dénoncé à l'Assemblée nationale le 4 juin ; il répond le 7 à son accusateur, le député François Chabot.</p>"}, "group": "Vie – jalons majeurs", "display_date": "4-7 juin 1792", "unique_id": "e77"}, {"start_date": {"year": 1792, "month": 8, "day": 23}, "text": {"headline": "Arrêté, emprisonné, délivré : échappe aux massacres de septembre", "text": "<p>Arrêté chez lui le 23 août, conduit à l'Abbaye le 27, il est délivré le 29 par Manuel, grâce notamment à l'intervention de Mme de La Marinaie — échappant ainsi aux massacres de septembre.</p>"}, "group": "Vie – jalons majeurs", "display_date": "23-29 août 1792", "unique_id": "e78"}, {"start_date": {"year": 1792, "month": 9, "day": 18}, "text": {"headline": "Quitte la France", "text": "<p>Il obtient un passeport (18) et une attestation de civisme (19), quitte la France et arrive au Havre le 22.</p>"}, "group": "Vie – jalons majeurs", "display_date": "18-22 septembre 1792", "unique_id": "e79"}, {"start_date": {"year": 1792, "month": 11, "day": 23}, "text": {"headline": "Décrété d'accusation par la Convention", "text": "<p>Sur dénonciation de Laurent Lecointre, Beaumarchais est décrété d'accusation ; les scellés sont posés chez lui fin novembre.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e80"}, {"start_date": {"year": 1792, "month": 12}, "text": {"headline": "Incarcéré à Londres pour dettes", "text": "<p>De retour à Londres, il est incarcéré à la prison du Ban du roi pour dettes.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Fin décembre 1792", "unique_id": "e81"}, {"start_date": {"year": 1793, "month": 2}, "text": {"headline": "Décret d'accusation suspendu, retour à Paris", "text": "<p>Le décret d'accusation est suspendu le 10, les scellés levés le 14 ; Beaumarchais rentre à Paris le 26, après avoir payé rançon à Londres.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Février 1793", "unique_id": "e82"}, {"start_date": {"year": 1793, "month": 5}, "text": {"headline": "Reconnu innocent par le Comité de salut public", "text": "<p>Il comparaît devant le Comité de salut public et est reconnu innocent le 7 ; à nouveau chargé d'acheter les armes de Hollande, il obtient son passeport le 25.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Mai 1793", "unique_id": "e83"}, {"start_date": {"year": 1794, "month": 3, "day": 14}, "text": {"headline": "Placé sur la liste des émigrés", "text": "<p>L'arrêt du Comité de salut public qui le protégeait est annulé ; Beaumarchais est placé sur la liste des émigrés.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e84"}, {"start_date": {"year": 1794, "month": 7, "day": 5}, "text": {"headline": "Sa femme, sa fille et sa sœur emprisonnées", "text": "<p>Mme de Beaumarchais, Eugénie et Julie (sa sœur) sont emprisonnées à Paris.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e85"}, {"start_date": {"year": 1794, "month": 8, "day": 8}, "text": {"headline": "Eugénie et sa mère libérées", "text": "<p>La chute de Robespierre les sauve de l'échafaud ; Julie, oubliée, reste emprisonnée quatre mois de plus.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e86"}, {"start_date": {"year": 1794, "month": 8, "day": 15}, "text": {"headline": "Mme de Beaumarchais divorce", "text": "<p>Contrainte par la loi sur les émigrés, Marie-Thérèse divorce de Beaumarchais.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e87"}, {"start_date": {"year": 1794, "month": 10}, "text": {"headline": "Réfugié en Allemagne, exil à Hambourg", "text": "<p>De Hollande, Beaumarchais se réfugie en Allemagne, où il vivra son exil, principalement à Hambourg.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Octobre 1794", "unique_id": "e88"}, {"start_date": {"year": 1795, "month": 6, "day": 30}, "text": {"headline": "L'arrêté d'émigré rapporté, mais retour bloqué", "text": "<p>Le Comité de Sûreté générale rapporte l'arrêté le déclarant émigré, mais des difficultés administratives empêchent encore son retour.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e89"}, {"start_date": {"year": 1796, "month": 6}, "text": {"headline": "Définitivement rayé de la liste des émigrés", "text": "<p>Beaumarchais apprend la nouvelle dix jours plus tard et part aussitôt pour la France.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Juin 1796", "unique_id": "e90"}, {"start_date": {"year": 1796, "month": 7, "day": 5}, "text": {"headline": "Retour à Paris : fin de l'exil", "text": "<p>Après être passé par Rotterdam et Anvers, Beaumarchais arrive enfin à Paris.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e91"}, {"start_date": {"year": 1797, "month": 4, "day": 30}, "text": {"headline": "Beaumarchais et Marie-Thérèse se remarient", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e92"}, {"start_date": {"year": 1797, "month": 5, "day": 5}, "text": {"headline": "Reprise triomphale de La Mère coupable", "text": "<p>Aux Comédiens-Français ; l'auteur est acclamé.</p>"}, "group": "Vie – jalons majeurs", "unique_id": "e93"}, {"start_date": {"year": 1798, "month": 1}, "text": {"headline": "Les commissions se contredisent sur les comptes de l'affaire des fusils", "text": "<p>D'abord déclaré créancier de l'État, Beaumarchais refuse le compromis ; une nouvelle commission le déclare débiteur en avril.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Janvier-avril 1798", "unique_id": "e94"}, {"start_date": {"year": 1798, "month": 5, "day": 9}, "text": {"headline": "Mort de sa sœur Julie", "text": ""}, "group": "Vie – jalons majeurs", "unique_id": "e95"}, {"start_date": {"year": 1799, "month": 5, "day": 17}, "text": {"headline": "Mort de Beaumarchais", "text": "<p>Il meurt d'apoplexie pendant son sommeil.</p>"}, "group": "Vie – jalons majeurs", "display_date": "Nuit du 17 au 18 mai 1799", "unique_id": "e96"}, {"start_date": {"year": 1722, "month": 7, "day": 13}, "text": {"headline": "Mariage des parents de Beaumarchais", "text": "<p>André-Charles Caron, maître horloger, épouse Marie-Louise Pichon.</p>"}, "group": "Vie – détails", "unique_id": "e97"}, {"start_date": {"year": 1725, "month": 2, "day": 13}, "text": {"headline": "Naissance de Marie-Josèphe Caron", "text": "<p>Future Mme Guilbert, sœur aînée de Beaumarchais.</p>"}, "group": "Vie – détails", "unique_id": "e98"}, {"start_date": {"year": 1731, "month": 1, "day": 10}, "text": {"headline": "Naissance de Marie-Louise « Lisette » Caron", "text": ""}, "group": "Vie – détails", "unique_id": "e99"}, {"start_date": {"year": 1734, "month": 3, "day": 30}, "text": {"headline": "Naissance de Madeleine-Françoise « Fanchon » Caron", "text": ""}, "group": "Vie – détails", "unique_id": "e100"}, {"start_date": {"year": 1735, "month": 12, "day": 24}, "text": {"headline": "Naissance de Marie-Julie « Bécasse » Caron", "text": ""}, "group": "Vie – détails", "unique_id": "e101"}, {"start_date": {"year": 1737}, "text": {"headline": "Naissance de Jeanne-Marguerite « Tonton » Caron", "text": "<p>Pierre-Augustin, seul garçon survivant, lui restera très attaché.</p>"}, "group": "Vie – détails", "display_date": "1737", "unique_id": "e102"}, {"start_date": {"year": 1748, "month": 11, "day": 27}, "text": {"headline": "Mariage de sa sœur Marie-Josèphe", "text": "<p>Elle épouse Louis Guilbert et part s'installer à Madrid avec Lisette.</p>"}, "group": "Vie – détails", "unique_id": "e103"}, {"start_date": {"year": 1749}, "text": {"headline": "Chassé puis pardonné par son père", "text": "<p>Il obtient son pardon après intervention d'amis de la famille.</p>"}, "group": "Vie – détails", "display_date": "Vers 1749-1750", "unique_id": "e104"}, {"start_date": {"year": 1753, "month": 11, "day": 13}, "text": {"headline": "Envoie un rapport à l'Académie des sciences", "text": "<p>Un long rapport appuyé sur des preuves matérielles incontestables pour revendiquer son invention.</p>"}, "group": "Vie – détails", "unique_id": "e105"}, {"start_date": {"year": 1755, "month": 6}, "text": {"headline": "L'Académie des sciences déclare Beaumarchais et Romilly pareillement inventeurs", "text": ""}, "group": "Vie – détails", "display_date": "Juin 1755", "unique_id": "e106"}, {"start_date": {"year": 1756, "month": 1, "day": 3}, "text": {"headline": "Mort de Franquet", "text": "<p>Les relations de Beaumarchais avec sa veuve deviennent plus intimes.</p>"}, "group": "Vie – détails", "unique_id": "e107"}, {"start_date": {"year": 1756, "month": 5, "day": 17}, "text": {"headline": "Mariage de sa sœur Madeleine-Françoise", "text": "<p>Elle épouse l'horloger Jean-Antoine Lépine, associé du père Caron.</p>"}, "group": "Vie – détails", "unique_id": "e108"}, {"start_date": {"year": 1758, "month": 8, "day": 17}, "text": {"headline": "Mort de Marie-Louise Pichon, sa mère", "text": ""}, "group": "Vie – détails", "unique_id": "e109"}, {"start_date": {"year": 1762, "month": 1}, "text": {"headline": "Achat de la charge de grand maître des Eaux et Forêts", "text": "<p>Charge qu'il doit revendre après s'être heurté à l'hostilité des autres grands maîtres.</p>"}, "group": "Vie – détails", "display_date": "Janvier 1762", "unique_id": "e110"}, {"start_date": {"year": 1763, "month": 1}, "text": {"headline": "Achat d'une maison rue de Condé", "text": "<p>Il y installera son père et ses sœurs cadettes, et y habitera jusqu'en 1773.</p>"}, "group": "Vie – détails", "display_date": "Janvier 1763", "unique_id": "e111"}, {"start_date": {"year": 1763, "month": 8}, "text": {"headline": "Achat de la charge de lieutenant général des chasses", "text": ""}, "group": "Vie – détails", "display_date": "Août 1763", "unique_id": "e112"}, {"start_date": {"year": 1766, "month": 2}, "text": {"headline": "Rupture des fiançailles avec Pauline Le Breton", "text": ""}, "group": "Vie – détails", "display_date": "Février 1766", "unique_id": "e113"}, {"start_date": {"year": 1784, "month": 8, "day": 12}, "text": {"headline": "Projet d'un institut de bienfaisance", "text": "<p>Proposé dans une lettre au Journal de Paris ; il ne verra pas le jour à Paris.</p>"}, "group": "Vie – détails", "unique_id": "e114"}, {"start_date": {"year": 1784, "month": 10, "day": 2}, "text": {"headline": "Cinquantième représentation du Mariage de Figaro", "text": "<p>Au bénéfice des mères nourrices.</p>"}, "group": "Vie – détails", "unique_id": "e115"}, {"start_date": {"year": 1785}, "text": {"headline": "Polémique avec Mirabeau au sujet de la Compagnie des Eaux", "text": ""}, "group": "Vie – détails", "display_date": "1785", "unique_id": "e116"}, {"start_date": {"year": 1785, "month": 8, "day": 19}, "text": {"headline": "Le Barbier de Séville repris à la cour", "text": "<p>Marie-Antoinette y joue le rôle de Rosine.</p>"}, "group": "Vie – détails", "unique_id": "e117"}, {"start_date": {"year": 1786, "month": 11}, "text": {"headline": "Règlement du paiement des manuscrits de Voltaire", "text": "<p>Achetés au libraire Panckoucke.</p>"}, "group": "Vie – détails", "display_date": "Novembre 1786", "unique_id": "e118"}, {"start_date": {"year": 1787}, "text": {"headline": "Début de la liaison avec Amélie Houret de La Marinaie", "text": ""}, "group": "Vie – détails", "display_date": "1787", "unique_id": "e119"}, {"start_date": {"year": 1787, "month": 7}, "text": {"headline": "Nouvelle réclamation aux Américains des sommes dues", "text": ""}, "group": "Vie – détails", "display_date": "Juillet 1787", "unique_id": "e120"}, {"start_date": {"year": 1788, "month": 8}, "text": {"headline": "Publication des Observations du sieur Bergasse", "text": "<p>Réponse au Court mémoire de Beaumarchais.</p>"}, "group": "Vie – détails", "display_date": "Août 1788", "unique_id": "e121"}, {"start_date": {"year": 1789, "month": 3}, "text": {"headline": "Publication du 3e Mémoire contre Kornman", "text": "<p>Ce mémoire est envoyé à chacun des juges de l'affaire.</p>"}, "group": "Vie – détails", "display_date": "Mars 1789", "unique_id": "e122"}, {"start_date": {"year": 1789, "month": 4, "day": 2}, "text": {"headline": "Kornman et Bergasse condamnés comme calomniateurs", "text": "<p>Un arrêt du Parlement les condamne, mais l'opinion publique reste hostile à Beaumarchais.</p>"}, "group": "Vie – détails", "unique_id": "e123"}, {"start_date": {"year": 1789, "month": 5}, "text": {"headline": "Élu président du district des Blancs-Manteaux", "text": ""}, "group": "Vie – détails", "display_date": "Printemps 1789", "unique_id": "e124"}, {"start_date": {"year": 1789, "month": 5, "day": 13}, "text": {"headline": "Signale des dégradations autour de sa nouvelle maison", "text": "<p>Lettre au lieutenant de police : on rôde autour de sa maison en construction, les portes sont placardées, des bas-reliefs cassés.</p>"}, "group": "Vie – détails", "unique_id": "e125"}, {"start_date": {"year": 1789, "month": 8, "day": 22}, "text": {"headline": "Don de 12 000 livres à son district", "text": "<p>Beaumarchais fait don de cette somme à son district, qu'il est chargé de surveiller dans la démolition de la Bastille.</p>"}, "group": "Vie – détails", "unique_id": "e126"}, {"start_date": {"year": 1789, "month": 9, "day": 2}, "text": {"headline": "Requête aux représentants de la commune de Paris", "text": "<p>Long texte où Beaumarchais réfute toutes les accusations lancées contre lui.</p>"}, "group": "Vie – détails", "unique_id": "e127"}, {"start_date": {"year": 1790}, "text": {"headline": "L'édition de Voltaire s'achève : échec financier", "text": "<p>Les soixante-dix volumes ont paru, mais seuls deux mille cinq cents souscripteurs se sont manifestés, la moitié du chiffre prévu ; les tentatives pour obtenir le paiement des créances américaines échouent.</p>"}, "group": "Vie – détails", "display_date": "1790", "unique_id": "e128"}, {"start_date": {"year": 1790, "month": 4}, "text": {"headline": "Don à l'Institut de bienfaisance maternelle de Lyon", "text": "<p>Beaumarchais envoie six mille livres à cet institut.</p>"}, "group": "Vie – détails", "display_date": "Avril 1790", "unique_id": "e129"}, {"start_date": {"year": 1790, "month": 7, "day": 14}, "text": {"headline": "Héberge huit cents fédérés de province", "text": "<p>Il refuse tout dédommagement pour cet accueil.</p>"}, "group": "Vie – détails", "unique_id": "e130"}, {"start_date": {"year": 1790, "month": 8, "day": 3}, "text": {"headline": "Reprise de Tarare", "text": "<p>Nouvelle version avec un dénouement remanié, « le Couronnement de Tarare ».</p>"}, "group": "Vie – détails", "unique_id": "e131"}, {"start_date": {"year": 1790, "month": 9}, "text": {"headline": "Réconciliation avec Mirabeau", "text": "<p>À l'occasion d'un échange de lettres pour une opération immobilière.</p>"}, "group": "Vie – détails", "display_date": "Septembre 1790", "unique_id": "e132"}, {"start_date": {"year": 1791, "month": 1, "day": 13}, "text": {"headline": "Décret protégeant les droits des auteurs dramatiques", "text": "<p>La Constituante adopte ce décret, aboutissement partiel du combat mené par Beaumarchais.</p>"}, "group": "Vie – détails", "unique_id": "e133"}, {"start_date": {"year": 1791, "month": 2}, "text": {"headline": "La Mère coupable acceptée à la Comédie-Française", "text": ""}, "group": "Vie – détails", "display_date": "Février 1791", "unique_id": "e134"}, {"start_date": {"year": 1791, "month": 4}, "text": {"headline": "Installation boulevard Saint-Antoine", "text": "<p>La famille s'installe dans la demeure enfin achevée, au moment où Eugénie quitte son couvent.</p>"}, "group": "Vie – détails", "display_date": "Printemps 1791", "unique_id": "e135"}, {"start_date": {"year": 1791, "month": 5, "day": 31}, "text": {"headline": "Ouverture du Théâtre du Marais", "text": ""}, "group": "Vie – détails", "unique_id": "e136"}, {"start_date": {"year": 1791, "month": 8}, "text": {"headline": "Rapport aux auteurs dramatiques sur la Comédie-Française", "text": "<p>Le rapport est lu et approuvé le 12 par les auteurs.</p>"}, "group": "Vie – détails", "display_date": "Août 1791", "unique_id": "e137"}, {"start_date": {"year": 1791, "month": 10}, "text": {"headline": "Envisage de se rendre en Amérique pour se faire payer", "text": ""}, "group": "Vie – détails", "display_date": "Automne 1791", "unique_id": "e138"}, {"start_date": {"year": 1791, "month": 12, "day": 23}, "text": {"headline": "Pétition contre l'usurpation des droits des auteurs", "text": "<p>Beaumarchais retire le même mois La Mère coupable de la Comédie-Française.</p>"}, "group": "Vie – détails", "unique_id": "e139"}, {"start_date": {"year": 1792, "month": 1}, "text": {"headline": "Reprise du Mariage de Figaro", "text": ""}, "group": "Vie – détails", "display_date": "Janvier 1792", "unique_id": "e140"}, {"start_date": {"year": 1792, "month": 6, "day": 26}, "text": {"headline": "Première de La Mère coupable au Théâtre du Marais", "text": "<p>La pièce est jouée sans succès, mais publiée malgré tout.</p>"}, "group": "Vie – détails", "unique_id": "e141"}, {"start_date": {"year": 1792, "month": 8, "day": 11}, "text": {"headline": "Sa maison est fouillée", "text": "<p>On n'y trouve rien de suspect.</p>"}, "group": "Vie – détails", "unique_id": "e142"}, {"start_date": {"year": 1793}, "text": {"headline": "Rédige le Mémoire ou les Six Époques", "text": "<p>Rédigé à Londres, ce texte porte sur l'affaire des fusils de Hollande.</p>"}, "group": "Vie – détails", "display_date": "1793", "unique_id": "e143"}, {"start_date": {"year": 1793, "month": 6, "day": 28}, "text": {"headline": "Malade, part pour la Suisse", "text": ""}, "group": "Vie – détails", "unique_id": "e144"}, {"start_date": {"year": 1793, "month": 8, "day": 4}, "text": {"headline": "Refoulé d'Angleterre, malade à Ostende", "text": "<p>Reconnu et refoulé le 4 août, il s'embarque pour Ostende le 16 et y reste malade près de trois mois.</p>"}, "group": "Vie – détails", "display_date": "Août 1793", "unique_id": "e145"}, {"start_date": {"year": 1793, "month": 11, "day": 25}, "text": {"headline": "Compte rendu au Comité de salut public", "text": "<p>Ce texte ne sera transmis qu'en janvier 1794.</p>"}, "group": "Vie – détails", "unique_id": "e146"}, {"start_date": {"year": 1793, "month": 12}, "text": {"headline": "Le Comité de salut public le déclare non-émigré", "text": "<p>En mission officielle, Beaumarchais ne saurait être considéré comme émigré — statut provisoire, bientôt remis en cause.</p>"}, "group": "Vie – détails", "display_date": "Décembre 1793", "unique_id": "e147"}, {"start_date": {"year": 1794, "month": 8, "day": 20}, "text": {"headline": "Entrevue à La Haye avec les dirigeants hollandais", "text": "<p>Il propose de servir d'intermédiaire pour conclure la paix ; son offre est repoussée.</p>"}, "group": "Vie – détails", "unique_id": "e148"}, {"start_date": {"year": 1794, "month": 10, "day": 6}, "text": {"headline": "Les Anglais s'emparent des fusils de Hollande", "text": "<p>Ils obtiennent de les transporter en Angleterre.</p>"}, "group": "Vie – détails", "display_date": "6-18 octobre 1794", "unique_id": "e149"}, {"start_date": {"year": 1794, "month": 12, "day": 4}, "text": {"headline": "Lettre à sa fille depuis Lübeck", "text": "<p>Il y exprime le désir de revenir en France pour se disculper.</p>"}, "group": "Vie – détails", "unique_id": "e150"}, {"start_date": {"year": 1795, "month": 4, "day": 10}, "text": {"headline": "Requête de remboursement au peuple américain", "text": "<p>Une de plus, restée sans effet.</p>"}, "group": "Vie – détails", "unique_id": "e151"}, {"start_date": {"year": 1795, "month": 4, "day": 13}, "text": {"headline": "Pétition des « citoyennes B. » en faveur de l'exilé", "text": "<p>Appuyée le 15 par le conventionnel Robert Lindet.</p>"}, "group": "Vie – détails", "display_date": "13-15 avril 1795", "unique_id": "e152"}, {"start_date": {"year": 1795, "month": 5, "day": 20}, "text": {"headline": "Lettre à William Pitt proposant une médiation de paix", "text": "<p>Pitt fait répondre que l'auteur de la lettre est indésirable en Angleterre.</p>"}, "group": "Vie – détails", "unique_id": "e153"}, {"start_date": {"year": 1795, "month": 6}, "text": {"headline": "Rachat des fusils de Hollande par les Anglais", "text": "<p>Ils sont définitivement perdus pour la France.</p>"}, "group": "Vie – détails", "display_date": "Juin 1795", "unique_id": "e154"}, {"start_date": {"year": 1795, "month": 8, "day": 5}, "text": {"headline": "Nouvelle lettre depuis Hambourg au Comité de salut public", "text": ""}, "group": "Vie – détails", "unique_id": "e155"}, {"start_date": {"year": 1795, "month": 9}, "text": {"headline": "Reprise de Tarare", "text": ""}, "group": "Vie – détails", "display_date": "Septembre 1795", "unique_id": "e156"}, {"start_date": {"year": 1796, "month": 7, "day": 10}, "text": {"headline": "Mariage de sa fille Eugénie", "text": "<p>Elle épouse André-Toussaint Delarue.</p>"}, "group": "Vie – détails", "unique_id": "e157"}, {"start_date": {"year": 1797}, "text": {"headline": "Réinstallation dans sa grande demeure", "text": "<p>Le séquestre sur la maison du boulevard Saint-Antoine est enfin levé.</p>"}, "group": "Vie – détails", "display_date": "Début 1797", "unique_id": "e158"}, {"start_date": {"year": 1797, "month": 1}, "text": {"headline": "Une commission examine ses comptes dans l'affaire des fusils de Hollande", "text": ""}, "group": "Vie – détails", "display_date": "Janvier 1797", "unique_id": "e159"}, {"start_date": {"year": 1797, "month": 10}, "text": {"headline": "Demande d'un passeport pour l'Amérique refusée", "text": "<p>Adressée à Talleyrand.</p>"}, "group": "Vie – détails", "display_date": "Octobre 1797", "unique_id": "e160"}, {"start_date": {"year": 1798}, "text": {"headline": "Correspondance amoureuse avec Amélie Houret de La Marinaie", "text": ""}, "group": "Vie – détails", "display_date": "1798", "unique_id": "e161"}, {"start_date": {"year": 1799, "month": 4}, "text": {"headline": "Publication de deux lettres sur Voltaire et Jésus-Christ", "text": "<p>Dans le Journal de Paris.</p>"}, "group": "Vie – détails", "display_date": "Avril 1799", "unique_id": "e162"}, {"start_date": {"year": 1799, "month": 5, "day": 7}, "text": {"headline": "Dernière lettre à Talleyrand", "text": "<p>Il le prie d'intercéder en sa faveur.</p>"}, "group": "Vie – détails", "unique_id": "e163"}, {"start_date": {"year": 1740}, "text": {"headline": "Guerre de Succession d'Autriche", "text": ""}, "group": "Contexte historique", "display_date": "1740-1748", "unique_id": "e164"}, {"start_date": {"year": 1748}, "text": {"headline": "Traité d'Aix-la-Chapelle", "text": "<p>Il met fin à la guerre de Succession d'Autriche.</p>"}, "group": "Contexte historique", "display_date": "1748", "unique_id": "e165"}, {"start_date": {"year": 1751}, "text": {"headline": "Publication du premier volume de l'Encyclopédie", "text": "<p>Dirigée par Diderot et d'Alembert.</p>"}, "group": "Contexte historique", "display_date": "1751", "unique_id": "e166"}, {"start_date": {"year": 1755, "month": 11, "day": 1}, "text": {"headline": "Tremblement de terre de Lisbonne", "text": ""}, "group": "Contexte historique", "unique_id": "e167"}, {"start_date": {"year": 1756}, "text": {"headline": "Guerre de Sept Ans", "text": ""}, "group": "Contexte historique", "display_date": "1756-1763", "unique_id": "e168"}, {"start_date": {"year": 1762}, "text": {"headline": "Rousseau publie Du Contrat social et Émile", "text": ""}, "group": "Contexte historique", "display_date": "1762", "unique_id": "e169"}, {"start_date": {"year": 1763}, "text": {"headline": "Traité de Paris", "text": "<p>Il met fin à la guerre de Sept Ans.</p>"}, "group": "Contexte historique", "display_date": "1763", "unique_id": "e170"}, {"start_date": {"year": 1764}, "text": {"headline": "Expulsion des Jésuites de France", "text": ""}, "group": "Contexte historique", "display_date": "1764", "unique_id": "e171"}, {"start_date": {"year": 1768}, "text": {"headline": "La France achète la Corse à Gênes", "text": ""}, "group": "Contexte historique", "display_date": "1768", "unique_id": "e172"}, {"start_date": {"year": 1770, "month": 5, "day": 16}, "text": {"headline": "Mariage du futur Louis XVI et de Marie-Antoinette", "text": ""}, "group": "Contexte historique", "unique_id": "e173"}, {"start_date": {"year": 1772}, "text": {"headline": "Premier partage de la Pologne", "text": ""}, "group": "Contexte historique", "display_date": "1772", "unique_id": "e174"}, {"start_date": {"year": 1773}, "text": {"headline": "Suppression de l'ordre des Jésuites par le pape Clément XIV", "text": ""}, "group": "Contexte historique", "display_date": "1773", "unique_id": "e175"}, {"start_date": {"year": 1774, "month": 5, "day": 10}, "text": {"headline": "Mort de Louis XV, avènement de Louis XVI", "text": ""}, "group": "Contexte historique", "unique_id": "e176"}, {"start_date": {"year": 1774, "month": 11, "day": 12}, "text": {"headline": "Rappel des parlements par Louis XVI", "text": "<p>Fin de la réforme Maupeou.</p>"}, "group": "Contexte historique", "unique_id": "e177"}, {"start_date": {"year": 1776, "month": 7, "day": 4}, "text": {"headline": "Déclaration d'indépendance des États-Unis", "text": ""}, "group": "Contexte historique", "unique_id": "e178"}, {"start_date": {"year": 1778, "month": 2, "day": 6}, "text": {"headline": "Traité d'alliance franco-américain", "text": ""}, "group": "Contexte historique", "unique_id": "e179"}, {"start_date": {"year": 1779}, "text": {"headline": "L'Espagne entre en guerre contre l'Angleterre", "text": ""}, "group": "Contexte historique", "display_date": "1779", "unique_id": "e180"}, {"start_date": {"year": 1781, "month": 10, "day": 19}, "text": {"headline": "Reddition de Yorktown", "text": ""}, "group": "Contexte historique", "unique_id": "e181"}, {"start_date": {"year": 1783, "month": 6}, "text": {"headline": "Premiers vols des frères Montgolfier", "text": ""}, "group": "Contexte historique", "display_date": "Juin 1783", "unique_id": "e182"}, {"start_date": {"year": 1783, "month": 9, "day": 3}, "text": {"headline": "Traité de Versailles : fin de la guerre d'indépendance américaine", "text": ""}, "group": "Contexte historique", "unique_id": "e183"}, {"start_date": {"year": 1785}, "text": {"headline": "Affaire du collier de la reine", "text": ""}, "group": "Contexte historique", "display_date": "1785", "unique_id": "e184"}, {"start_date": {"year": 1786}, "text": {"headline": "Signature du traité de commerce franco-anglais (traité d'Eden)", "text": ""}, "group": "Contexte historique", "display_date": "1786", "unique_id": "e185"}, {"start_date": {"year": 1786, "month": 5, "day": 1}, "text": {"headline": "Première des Noces de Figaro de Mozart à Vienne", "text": "<p>Adaptation en opéra de la pièce de Beaumarchais.</p>"}, "group": "Contexte historique", "unique_id": "e186"}, {"start_date": {"year": 1787, "month": 2}, "text": {"headline": "Assemblée des notables", "text": ""}, "group": "Contexte historique", "display_date": "Février-mai 1787", "unique_id": "e187"}, {"start_date": {"year": 1787, "month": 4}, "text": {"headline": "Renvoi de Calonne", "text": ""}, "group": "Contexte historique", "display_date": "Avril 1787", "unique_id": "e188"}, {"start_date": {"year": 1788, "month": 6, "day": 7}, "text": {"headline": "Journée des Tuiles à Grenoble", "text": ""}, "group": "Contexte historique", "unique_id": "e189"}, {"start_date": {"year": 1788, "month": 8, "day": 8}, "text": {"headline": "Convocation des États généraux annoncée", "text": ""}, "group": "Contexte historique", "unique_id": "e190"}, {"start_date": {"year": 1789, "month": 5, "day": 5}, "text": {"headline": "Ouverture des États généraux à Versailles", "text": ""}, "group": "Contexte historique", "unique_id": "e191"}, {"start_date": {"year": 1789, "month": 6, "day": 17}, "text": {"headline": "Le tiers état se proclame Assemblée nationale", "text": ""}, "group": "Contexte historique", "unique_id": "e192"}, {"start_date": {"year": 1789, "month": 6, "day": 20}, "text": {"headline": "Serment du Jeu de paume", "text": ""}, "group": "Contexte historique", "unique_id": "e193"}, {"start_date": {"year": 1789, "month": 7, "day": 14}, "text": {"headline": "Prise de la Bastille", "text": ""}, "group": "Contexte historique", "unique_id": "e194"}, {"start_date": {"year": 1789, "month": 8, "day": 4}, "text": {"headline": "Abolition des privilèges", "text": ""}, "group": "Contexte historique", "unique_id": "e195"}, {"start_date": {"year": 1789, "month": 8, "day": 26}, "text": {"headline": "Déclaration des droits de l'homme et du citoyen", "text": ""}, "group": "Contexte historique", "unique_id": "e196"}, {"start_date": {"year": 1789, "month": 10, "day": 5}, "text": {"headline": "Marche des femmes sur Versailles", "text": "<p>La famille royale est ramenée à Paris.</p>"}, "group": "Contexte historique", "display_date": "5-6 octobre 1789", "unique_id": "e197"}, {"start_date": {"year": 1790, "month": 7, "day": 12}, "text": {"headline": "Constitution civile du clergé", "text": ""}, "group": "Contexte historique", "unique_id": "e198"}, {"start_date": {"year": 1790, "month": 7, "day": 14}, "text": {"headline": "Fête de la Fédération", "text": ""}, "group": "Contexte historique", "unique_id": "e199"}, {"start_date": {"year": 1791, "month": 6, "day": 20}, "text": {"headline": "Fuite à Varennes", "text": "<p>Arrestation de la famille royale en fuite.</p>"}, "group": "Contexte historique", "display_date": "20-21 juin 1791", "unique_id": "e200"}, {"start_date": {"year": 1791, "month": 9, "day": 14}, "text": {"headline": "Louis XVI accepte la Constitution", "text": ""}, "group": "Contexte historique", "unique_id": "e201"}, {"start_date": {"year": 1791, "month": 10, "day": 1}, "text": {"headline": "Ouverture de l'Assemblée législative", "text": ""}, "group": "Contexte historique", "unique_id": "e202"}, {"start_date": {"year": 1792, "month": 4, "day": 20}, "text": {"headline": "Déclaration de guerre à l'Autriche", "text": ""}, "group": "Contexte historique", "unique_id": "e203"}, {"start_date": {"year": 1792, "month": 8, "day": 10}, "text": {"headline": "Prise des Tuileries : chute de la monarchie", "text": ""}, "group": "Contexte historique", "unique_id": "e204"}, {"start_date": {"year": 1792, "month": 9, "day": 2}, "text": {"headline": "Massacres de septembre", "text": ""}, "group": "Contexte historique", "display_date": "2-6 septembre 1792", "unique_id": "e205"}, {"start_date": {"year": 1792, "month": 9, "day": 20}, "text": {"headline": "Victoire de Valmy", "text": ""}, "group": "Contexte historique", "unique_id": "e206"}, {"start_date": {"year": 1792, "month": 9, "day": 21}, "text": {"headline": "Proclamation de la République", "text": "<p>Réunion de la Convention nationale.</p>"}, "group": "Contexte historique", "unique_id": "e207"}, {"start_date": {"year": 1793, "month": 1, "day": 21}, "text": {"headline": "Exécution de Louis XVI", "text": ""}, "group": "Contexte historique", "unique_id": "e208"}, {"start_date": {"year": 1793, "month": 3}, "text": {"headline": "Soulèvement vendéen ; création du Tribunal révolutionnaire", "text": ""}, "group": "Contexte historique", "display_date": "Mars 1793", "unique_id": "e209"}, {"start_date": {"year": 1793, "month": 4, "day": 6}, "text": {"headline": "Création du Comité de salut public", "text": ""}, "group": "Contexte historique", "unique_id": "e210"}, {"start_date": {"year": 1793, "month": 6, "day": 2}, "text": {"headline": "Chute des Girondins", "text": ""}, "group": "Contexte historique", "unique_id": "e211"}, {"start_date": {"year": 1793, "month": 10, "day": 16}, "text": {"headline": "Exécution de Marie-Antoinette", "text": ""}, "group": "Contexte historique", "unique_id": "e212"}, {"start_date": {"year": 1794, "month": 4, "day": 5}, "text": {"headline": "Exécution de Danton", "text": ""}, "group": "Contexte historique", "unique_id": "e213"}, {"start_date": {"year": 1794, "month": 6, "day": 8}, "text": {"headline": "Fête de l'Être suprême", "text": ""}, "group": "Contexte historique", "unique_id": "e214"}, {"start_date": {"year": 1794, "month": 7, "day": 27}, "text": {"headline": "Chute et exécution de Robespierre", "text": ""}, "group": "Contexte historique", "display_date": "27-28 juillet 1794 (9 thermidor an II)", "unique_id": "e215"}, {"start_date": {"year": 1795, "month": 8}, "text": {"headline": "Constitution de l'an III", "text": ""}, "group": "Contexte historique", "display_date": "Août 1795", "unique_id": "e216"}, {"start_date": {"year": 1795, "month": 10}, "text": {"headline": "Établissement du Directoire", "text": "<p>Journée du 13 vendémiaire.</p>"}, "group": "Contexte historique", "display_date": "Octobre 1795", "unique_id": "e217"}, {"start_date": {"year": 1796}, "text": {"headline": "Campagne d'Italie de Bonaparte", "text": ""}, "group": "Contexte historique", "display_date": "1796-1797", "unique_id": "e218"}, {"start_date": {"year": 1796, "month": 3}, "text": {"headline": "Début de la campagne d'Italie de Bonaparte", "text": ""}, "group": "Contexte historique", "display_date": "Mars 1796", "unique_id": "e219"}, {"start_date": {"year": 1798, "month": 5}, "text": {"headline": "Expédition d'Égypte de Bonaparte", "text": ""}, "group": "Contexte historique", "display_date": "Mai 1798", "unique_id": "e220"}, {"start_date": {"year": 1798, "month": 8, "day": 1}, "text": {"headline": "Bataille d'Aboukir", "text": ""}, "group": "Contexte historique", "unique_id": "e221"}, {"start_date": {"year": 1799, "month": 11, "day": 9}, "text": {"headline": "Coup d'État du 18 Brumaire", "text": "<p>Quelques mois après la mort de Beaumarchais : fin du Directoire.</p>"}, "group": "Contexte historique", "unique_id": "e222"}]};
+
+  var eventIndex = timeline_json.events.map(function(ev) {
+    return {
+      id: ev.unique_id,
+      year: ev.start_date.year,
+      headline: ev.text.headline,
+      display: ev.display_date || ev.start_date.year
+    };
+  });
+
+  window.timeline = new TL.Timeline('timeline-embed', timeline_json, {
+    language: 'fr',
+    scale_factor: 2
+  });
+
+  function findClosestEvent(targetYear) {
+    var best = null, bestDist = Infinity;
+    for (var i = 0; i < eventIndex.length; i++) {
+      var dist = Math.abs(eventIndex[i].year - targetYear);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = eventIndex[i];
+      }
+    }
+    return best;
+  }
+
+  function doGoTo() {
+    var input = document.getElementById('goto-year');
+    var msg = document.getElementById('goto-msg');
+    var year = parseInt(input.value, 10);
+    if (isNaN(year)) {
+      msg.textContent = 'Entrez une année valide.';
+      return;
+    }
+    var match = findClosestEvent(year);
+    if (!match) {
+      msg.textContent = 'Aucun événement trouvé.';
+      return;
+    }
+    msg.textContent = 'Événement le plus proche : ' + match.display + ' — ' + match.headline;
+    try {
+      if (window.timeline && typeof window.timeline.goToId === 'function') {
+        window.timeline.goToId(match.id);
+      }
+    } catch (err) {
+      console.error('goToId a échoué :', err);
+    }
+  }
+
+  document.getElementById('goto-btn').addEventListener('click', doGoTo);
+  document.getElementById('goto-year').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doGoTo();
+  });
+</script>
 </body>
 </html>
