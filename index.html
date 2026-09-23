@@ -37,6 +37,9 @@ h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; }
 .filtres button[aria-pressed="true"], .frise button[aria-pressed="true"] { color: #fff; background: var(--encre); }
 .periode { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
 .periode input[type=range] { width: 100%; }
+#ligneOpacite { display: flex; align-items: center; gap: .5rem; margin-top: .4rem; }
+#ligneOpacite input[type=range] { flex: 1; }
+#ligneOpacite output { min-width: 3em; text-align: right; }
 
 /* frise chronologique */
 .frise { margin-top: 1.2rem; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: .9rem; }
@@ -163,6 +166,11 @@ td.nb { white-space: nowrap; }
         <option value="cassini_roi">Carte de Cassini — exemplaire du roi (IGN/BNF)</option>
         <option value="cassini_ma">Carte de Cassini — exemplaire dit de Marie-Antoinette (IGN/BNF)</option>
       </select>
+      <div id="ligneOpacite" hidden>
+        <label for="opaciteFond">Transparence</label>
+        <input type="range" id="opaciteFond" min="0" max="100" value="100">
+        <output id="sortieOpacite">100 %</output>
+      </div>
     </div>
     <div>
       <label for="niveauLieux">Niveau des lieux</label>
@@ -268,7 +276,7 @@ let DATA = [];
 let anneeMin = 0, anneeMax = 0, maxGlobal = 1, maxLien = 1, premierAffichage = true;
 const dansFenetre = l => l.annee >= anneeMin && l.annee <= anneeMax;
 const etat = {
-  min: 0, max: 0, corr: "", sens: "", niveau: "lieu", liens: false, suivi: false, fond: "osm"
+  min: 0, max: 0, corr: "", sens: "", niveau: "lieu", liens: false, suivi: false, fond: "osm", opacite: 100
 };
 
 /* ---------- Application des lieux de destination attribués d'office ---------- */
@@ -406,9 +414,16 @@ let fondBase = null, fondHistorique = null;
 function definirFond(cle) {
   if (!fondBase) fondBase = FOND_BASE().addTo(carte);
   if (fondHistorique) { carte.removeLayer(fondHistorique); fondHistorique = null; }
-  if (cle in FONDS_HISTORIQUES) fondHistorique = FONDS_HISTORIQUES[cle]().addTo(carte);
-  else cle = "osm";
+  if (cle in FONDS_HISTORIQUES) {
+    fondHistorique = FONDS_HISTORIQUES[cle]().addTo(carte);
+    fondHistorique.setOpacity(etat.opacite / 100);
+  } else cle = "osm";
   etat.fond = cle;
+  majControleOpacite();
+}
+
+function majControleOpacite() {   // le curseur n'a de sens qu'avec un fond historique affiché
+  $("ligneOpacite").hidden = !(etat.fond in FONDS_HISTORIQUES);
 }
 
 const couche = {
@@ -629,8 +644,8 @@ function terminerLecture() {
 let dernierEnvoi = "";
 function diffuser(force = false) {   // onglet principal -> onglet « carte seule »
   if (!canal || MODE_CARTE) return;
-  const { min, max, corr, sens, niveau, liens, suivi, fond } = etat;
-  const message = JSON.stringify({ min, max, corr, sens, niveau, liens, suivi, fond });
+  const { min, max, corr, sens, niveau, liens, suivi, fond, opacite } = etat;
+  const message = JSON.stringify({ min, max, corr, sens, niveau, liens, suivi, fond, opacite });
   if (!force && message === dernierEnvoi) return;   // rien n'a changé (ex. simple zoom)
   dernierEnvoi = message;
   canal.postMessage({ type: "etat", etat: JSON.parse(message) });
@@ -639,10 +654,14 @@ function diffuser(force = false) {   // onglet principal -> onglet « carte seul
 function appliquerEtatRecu(e) {   // onglet « carte seule » : reprend les réglages de l'onglet principal
   const niveauChange = e.niveau !== etat.niveau;
   const fondChange = e.fond !== etat.fond;
-  Object.assign(etat, { min: e.min, max: e.max, corr: e.corr, sens: e.sens, niveau: e.niveau, liens: e.liens, suivi: e.suivi, fond: e.fond });
+  Object.assign(etat, { min: e.min, max: e.max, corr: e.corr, sens: e.sens, niveau: e.niveau, liens: e.liens, suivi: e.suivi, fond: e.fond, opacite: e.opacite ?? 100 });
   if (niveauChange) echelles();
   if (fondChange) definirFond(e.fond || "osm");
+  else if (fondHistorique) fondHistorique.setOpacity(etat.opacite / 100);
   $("fondCarte").value = etat.fond;
+  $("opaciteFond").value = etat.opacite;
+  $("sortieOpacite").textContent = etat.opacite + " %";
+  majControleOpacite();
   afficher();
 }
 
@@ -824,7 +843,13 @@ function initialiser() {
   }
   preparerVilles();
   definirFond("osm");
-  $("fondCarte").addEventListener("change", e => { definirFond(e.target.value); afficher(); });
+  $("fondCarte").addEventListener("change", e => { definirFond(e.target.value); diffuser(true); afficher(); });
+  $("opaciteFond").addEventListener("input", e => {
+    etat.opacite = +e.target.value;
+    $("sortieOpacite").textContent = etat.opacite + " %";
+    if (fondHistorique) fondHistorique.setOpacity(etat.opacite / 100);
+    diffuser();
+  });
   $("btnOuvrirCarte").addEventListener("click", ouvrirCarteSeule);
   if (canal) {
     canal.addEventListener("message", m => {
